@@ -1,0 +1,40 @@
+<annotations>
+  <path>
+    <name>example1.txt</name>
+    <series id ="1">
+    <object>
+      <!-- Label 1 for example1.txt, Series 1 -->
+    </object>
+    <object>
+      <!-- Label 2 for example1.txt, Series 1 -->
+    </object>
+    </series>
+    <series id ="2">
+    <object>
+      <!-- Label 1 for example1.txt, Series 2 -->
+    </object>
+    <object>
+      <!-- Label 2 for example1.txt, Series 2 -->
+    </object>
+    </series>
+  </path>
+  <path>
+    <name>example2.txt</name>
+    <series id ="1">
+    <object>
+      <!-- Label 1 for example2.txt, Series 1 -->
+    </object>
+    <object>
+      <!-- Label 2 for example2.txt, Series 1 -->
+    </object>
+    </series>
+    <series id ="2">
+    <object>
+      <!-- Label 1 for example2.txt, Series 2 -->
+    </object>
+    <object>
+      <!-- Label 2 for example2.txt, Series 2 -->
+    </object>
+    </series>
+  </path>
+</annotations>
