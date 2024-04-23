@@ -15,8 +15,11 @@ def get_previous_image_name(image_name):
     match = re.search(r't(\d{3})\.png$', image_name)
     if match:
         timepoint = int(match.group(1))
-        # If timepoint is already 0, keep it as is (or handle accordingly)
-        timepoint = max(0, timepoint - 1)
+        # If timepoint is already 0, return  None
+        if timepoint == 0:
+            return None
+        
+        timepoint -=1
         # Replace the old timepoint with the new one in the image name
         new_image_name = re.sub(r't\d{3}\.png$', f't{timepoint:03}.png', image_name)
         return new_image_name
@@ -29,9 +32,12 @@ def get_relative_image_name(image_name, stepback):
     match = re.search(r't(\d{3})\.png$', image_name)
     if match:
         timepoint = int(match.group(1))
-        # If timepoint is already 0, keep it as is (or handle accordingly)
-        timepoint = max(0, timepoint - stepback)
+        # If adjusted timepoint is less than 0 return None
+        timepoint -= stepback
+        if timepoint < 0:
+            return None
         # Replace the old timepoint with the new one in the image name
+        new_image_name = re.sub(r't\d{3}\.png$', f't{timepoint:03}.png', image_name)
         return new_image_name
     else:
         return None  # Return None if the format doesn't match

@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import cv2
 import os
 import numpy as np
-from .clicker_utils import get_previous_image_name, convert_path_format
+from .clicker_utils import get_previous_image_name, convert_path_format, get_relative_image_name
 import pandas as pd
 
 import os
@@ -19,7 +19,7 @@ def check_xml(xml_path):
     else:
         print(f"XML file '{xml_path}' already exists.")
         
-    return cell_xml_to_dataframe(xml_path)
+    return cell_xml_to_dataframe_absfilenames(xml_path)
 
 
 def find_labels_and_extract_rois(xml_path, label_name, image_path):
@@ -256,7 +256,50 @@ def cell_xml_to_dataframe(xml_file):
     df = pd.DataFrame(data_entries)
     return df
 
+def cell_xml_to_dataframe_absfilenames(xml_file):
+    # Parse the XML file
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
 
+    # Prepare a list to hold the data
+    data_entries = []
+
+    # Iterate through each 'path' in the XML
+    for path in root.findall('path'):
+        path_name = path.find('name').text
+        
+        for series in path.findall('series'):
+            series_id = series.get('id')
+            print(path_name)
+            print(series_id)
+        # Iterate through each 'label' within 'series'
+            for label in series.findall('./label'):
+                class_id = label.find('class_id').text
+                print(class_id)
+                x_center = label.find('x_center').text
+                y_center = label.find('y_center').text
+                width = label.find('width').text
+                height = label.find('height').text
+
+                
+
+                # Append this entry as a dict to the list
+                data_entries.append({
+                    'PathName': path_name,
+                    'SeriesID': series_id,
+                    'ClassID': class_id,
+                    'XCenter': x_center,
+                    'YCenter': y_center,
+                    'Width': width,
+                    'Height': height
+                })
+                path_name = get_previous_image_name(str(path_name))
+
+            
+
+    # Create a DataFrame from the list of dicts
+    df = pd.DataFrame(data_entries)
+    return df
 
 def modify_class_ids(df, selected_indices, target_class_id = 2):
     # selected_indices is a dict with keys as (PathName, SeriesID) and values as the selected index
