@@ -5,6 +5,23 @@ import numpy as np
 from .clicker_utils import get_previous_image_name, convert_path_format
 import pandas as pd
 
+import os
+import xml.etree.ElementTree as ET
+
+def check_xml(xml_path):
+    if not os.path.exists(xml_path):
+        # Create the root element
+        root = ET.Element("annotations")
+        # Initialize the tree structure from the root
+        tree = ET.ElementTree(root)
+        # Write the tree to a file
+        tree.write(xml_path)
+    else:
+        print(f"XML file '{xml_path}' already exists.")
+        
+    return cell_xml_to_dataframe(xml_path)
+
+
 def find_labels_and_extract_rois(xml_path, label_name, image_path):
     labels = {}
     first_label_name = label_name
