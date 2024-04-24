@@ -1,4 +1,5 @@
 import tkinter as tk
+import os
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import numpy as np
@@ -98,6 +99,24 @@ def on_selection_clicked(index, window, image_sets, selected_indices, root,set_l
 def load_ui(cell_xml):
     # Call the UI function to run the name selector
     name_xml = run_name_selector("select_xmls")
+    print(f"Selected XML: {name_xml}")
+    images_dict = get_all_images(cell_xml)
+    selected_indicies = load_selector(images_dict, 0)
+    store_results(images_dict, selected_indicies, name_xml)
+
+def load_ui_from_folder():
+    # Call the UI function to run the name selector
+
+    directory = filedialog.askdirectory(title="Select Directory with Images")
+    if not directory:
+        return
+    selections_folder = os.path.join(directory, "user_selections")
+    os.makedirs(selections_folder, exist_ok=True)
+    
+    cell_xml = os.path.join(os.path.join(directory, "images"), "cell_reigons.xml")
+    cell_xml = os.path.normpath(cell_xml)
+
+    name_xml = run_name_selector(selections_folder)
     print(f"Selected XML: {name_xml}")
     images_dict = get_all_images(cell_xml)
     selected_indicies = load_selector(images_dict, 0)

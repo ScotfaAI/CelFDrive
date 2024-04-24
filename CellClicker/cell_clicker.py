@@ -1,9 +1,13 @@
+import os
+import re
 import cv2
 import numpy as np
 import tkinter as tk
-from tkinter import Button, Toplevel, Label
-from CellClicker.manageXML import get_series_count_for_label, append_cell_regions_xml
-from CellClicker.clicker_utils import get_previous_image_name
+from tkinter import Button, Toplevel, Label, filedialog, messagebox
+from PIL import Image, ImageTk
+from CellClicker.manageXML import get_series_count_for_label, append_cell_regions_xml, check_xml
+from CellClicker.clicker_utils import get_previous_image_name, yolov5_to_xywh
+
 
 class ImageProcessor:
     def __init__(self, master, image_path, bbox, xml_path):
@@ -122,14 +126,7 @@ class ImageProcessor:
         """Closes all OpenCV windows and quits the Tkinter Toplevel."""
         self.image_window.destroy()
 
-import tkinter as tk
-from tkinter import filedialog, messagebox
 
-from PIL import Image, ImageTk
-import os
-import re
-from CellClicker.clicker_utils import yolov5_to_xywh
-from CellClicker.manageXML import check_xml
 
 class ImageViewer:
     def __init__(self, root):

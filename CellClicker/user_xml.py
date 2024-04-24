@@ -36,10 +36,11 @@ def update_xml(file_name, series_id, selected_index, xml_file_name):
     tree.write(xml_file_name)
 
 
-def store_results(images_dict, selected_indicies, xml_file_name):
+def store_results(images_dict, selected_indicies, name_xml):
+
     for (file_name, series_id ), selected_index in zip(images_dict.keys(), selected_indicies):
-        print(file_name, series_id, selected_index, xml_file_name)
-        update_xml(file_name, series_id, selected_index, xml_file_name)    
+        print(file_name, series_id, selected_index, name_xml)
+        update_xml(file_name, series_id, selected_index, name_xml)    
 
 
 def read_xml_to_dataframe(xml_file):
