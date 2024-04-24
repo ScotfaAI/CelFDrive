@@ -30,7 +30,7 @@ def find_labels_and_extract_rois(xml_path, label_name, image_path):
     tree = ET.parse(xml_path)
     root = tree.getroot()
     print(convert_path_format(label_name))
-    print("searching...")
+    # print("searching...")
 
     # Find the parent element with the specified label name
     parent_elem = None
@@ -38,13 +38,13 @@ def find_labels_and_extract_rois(xml_path, label_name, image_path):
         print(convert_path_format(elem.find("name").text))
         if convert_path_format(elem.find("name").text) == convert_path_format(label_name):
             parent_elem = elem
-            print("foundname")
+            # print("foundname")
             break
 
     if parent_elem is not None:
         for series_elem in parent_elem.findall("series"):
             series_id = series_elem.get("id")
-            print("foundseries")
+            # print("foundseries")
             labels[series_id] = []
             label_name = first_label_name
             image_path = first_image_path 
@@ -109,18 +109,18 @@ def append_cell_regions_xml(xml_path, label_path, class_id, x_center, y_center, 
     for elem in parent_elem.findall("series"):
         if elem.get("id") == str(series):
             series_elem = elem
-            print("foundseries!")
+            # print("foundseries!")
             break
        
     
     if series_elem is None:
-        print("series not found!")
+        # print("series not found!")
         series_elem = ET.Element("series", id=str(series))
         parent_elem.append(series_elem)
 
 #     # Create a <series> element for the specified series
 #     series_elem = ET.Element("series", id=str(series))
-    print("before label")
+    # print("before label")
     # Normalize the coordinates
     x_center_normalized = x_center / img_width
     y_center_normalized = y_center / img_height
@@ -137,14 +137,14 @@ def append_cell_regions_xml(xml_path, label_path, class_id, x_center, y_center, 
 
     # Append the <label> element to the <series> element
     series_elem.append(label_elem)
-    print("label append")
+    # print("label append")
     # Append the <series> element to the parent element
 #     parent_elem.append(series_elem)
 #     print("series append")
 
     # Save the updated XML file
     tree = ET.ElementTree(root)
-    print("end")
+    # print("end")
 
     tree.write(xml_path)
 
@@ -278,7 +278,7 @@ def cell_xml_to_dataframe_absfilenames(xml_file):
         # Iterate through each 'label' within 'series'
             for label in series.findall('./label'):
                 class_id = label.find('class_id').text
-                print(class_id)
+                # print(class_id)
                 x_center = label.find('x_center').text
                 y_center = label.find('y_center').text
                 width = label.find('width').text
