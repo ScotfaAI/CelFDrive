@@ -172,7 +172,7 @@ def get_series_count_for_label(xml_path, label_name):
         return 0  # Return 0 if the XML file doesn't exist
 
     series_count = 0
-    label_name = convert_path_format(label_name)
+    # label_name = convert_path_format(label_name)
     # Parse the XML file
     tree = ET.parse(xml_path)
     root = tree.getroot()
@@ -267,11 +267,14 @@ def cell_xml_to_dataframe_absfilenames(xml_file):
     # Iterate through each 'path' in the XML
     for path in root.findall('path'):
         path_name = path.find('name').text
+        # we create a copy to decrease value as going along without affecting from series to series
+        path_name_series = path.find('name').text
         
         for series in path.findall('series'):
             series_id = series.get('id')
-            print(path_name)
-            print(series_id)
+            path_name_series = path_name
+            # print(path_name)
+            # print(series_id)
         # Iterate through each 'label' within 'series'
             for label in series.findall('./label'):
                 class_id = label.find('class_id').text
@@ -285,7 +288,7 @@ def cell_xml_to_dataframe_absfilenames(xml_file):
 
                 # Append this entry as a dict to the list
                 data_entries.append({
-                    'PathName': path_name,
+                    'PathName': path_name_series,
                     'SeriesID': series_id,
                     'ClassID': class_id,
                     'XCenter': x_center,
@@ -293,7 +296,7 @@ def cell_xml_to_dataframe_absfilenames(xml_file):
                     'Width': width,
                     'Height': height
                 })
-                path_name = get_previous_image_name(str(path_name))
+                path_name_series = get_previous_image_name(str(path_name_series))
 
             
 
