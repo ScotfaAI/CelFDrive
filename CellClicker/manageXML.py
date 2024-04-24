@@ -161,7 +161,7 @@ def get_all_label_names(xml_path):
     # Iterate through path elements to collect label names
     for path_elem in root.findall("path"):
         label_name = path_elem.find("name").text
-        label_name = convert_path_format(label_name)
+        # label_name = convert_path_format(label_name)
         label_names.append(label_name)
 
     return label_names

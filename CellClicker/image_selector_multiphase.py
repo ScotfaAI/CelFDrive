@@ -5,7 +5,7 @@ from PIL import Image, ImageTk
 import numpy as np
 from .name_selector import run_name_selector
 from .manageXML import append_cell_regions_xml, find_labels_and_extract_rois, get_all_label_names, get_series_count_for_label, get_all_images, cell_xml_to_dataframe
-from .user_xml import store_results, read_xml_to_dataframe
+from .user_xml import store_results, store_results_multiclass, read_xml_to_dataframe
 from .convert_selections import modify_class_ids, append_modified_labels
 import numpy as np
 
@@ -132,7 +132,7 @@ def load_ui_from_folder():
     images_dict = get_all_images(cell_xml)
     selected_indicies = load_selector(images_dict, 0)
     print(selected_indicies)
-    # store_results(images_dict, selected_indicies, name_xml)
+    store_results_multiclass(images_dict, selected_indicies, name_xml)
     
 def xml_to_labels(name_xml, cell_xml):
     

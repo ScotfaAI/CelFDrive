@@ -35,12 +35,61 @@ def update_xml(file_name, series_id, selected_index, xml_file_name):
     # Save the updated XML to the file
     tree.write(xml_file_name)
 
+def update_xml_multiclass(file_name, series_id, selected_indices, xml_file_name):
+    # Parse the existing XML file
+    tree = ET.parse(xml_file_name)
+    root = tree.getroot()
+
+    # Define the phases
+    phases = ['prometaphase', 'metaphase', 'anaphase']
+
+    # Search for an existing entry with the same "File" and "SeriesID"
+    for data_entry in root.findall('DataEntry'):
+        file_element = data_entry.find('PathName')
+        series_id_element = data_entry.find('SeriesID')
+
+        # Check if the file and series_id match
+        if file_element is not None and series_id_element is not None and \
+           file_element.text == file_name and series_id_element.text == str(series_id):
+            # Update the selected_index values for each phase
+            for phase in phases:
+                phase_element = data_entry.find(phase)
+                if phase_element is None:
+                    phase_element = ET.SubElement(data_entry, phase)
+                phase_value = selected_indices.get(phase, 'skipped')
+                phase_element.text = str(-1 if phase_value in ['skipped', 'blurry'] else phase_value)
+            break
+    else:
+        # If no matching entry was found, create a new one
+        data_entry = ET.Element('DataEntry')
+        file_element = ET.SubElement(data_entry, 'PathName')
+        series_id_element = ET.SubElement(data_entry, 'SeriesID')
+        file_element.text = file_name
+        series_id_element.text = str(series_id)
+
+        # Create elements for each phase
+        for phase in phases:
+            phase_element = ET.SubElement(data_entry, phase)
+            phase_value = selected_indices.get(phase, 'skipped')  # Use 'skipped' as default if phase not found
+            phase_element.text = str(-1 if phase_value in ['skipped', 'blurry'] else phase_value)
+
+        root.append(data_entry)
+
+    # Save the updated XML to the file
+    tree.write(xml_file_name)
+
 
 def store_results(images_dict, selected_indicies, name_xml):
 
     for (file_name, series_id ), selected_index in zip(images_dict.keys(), selected_indicies):
         print(file_name, series_id, selected_index, name_xml)
         update_xml(file_name, series_id, selected_index, name_xml)    
+
+def store_results_multiclass(images_dict, selected_indicies, name_xml):
+
+    for (file_name, series_id ), selected_index_dict in zip(images_dict.keys(), selected_indicies):
+        print(file_name, series_id, selected_index_dict, name_xml)
+        update_xml_multiclass(file_name, series_id, selected_index_dict, name_xml)    
 
 
 def read_xml_to_dataframe(xml_file):
