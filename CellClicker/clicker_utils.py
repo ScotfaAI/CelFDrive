@@ -15,11 +15,11 @@ def get_previous_image_name(image_name):
     match = re.search(r't(\d{3})\.png$', image_name)
     if match:
         timepoint = int(match.group(1))
-        # If timepoint is already 0, return  None
-        if timepoint == 0:
-            return None
+        # If timepoint would become 0, return  None
         
         timepoint -=1
+        if timepoint == 0:
+            return None
         # Replace the old timepoint with the new one in the image name
         new_image_name = re.sub(r't\d{3}\.png$', f't{timepoint:03}.png', image_name)
         return new_image_name
@@ -32,9 +32,9 @@ def get_relative_image_name(image_name, stepback):
     match = re.search(r't(\d{3})\.png$', image_name)
     if match:
         timepoint = int(match.group(1))
-        # If adjusted timepoint is less than 0 return None
+        # If adjusted timepoint is less than 1 return None
         timepoint -= stepback
-        if timepoint < 0:
+        if timepoint < 1:
             return None
         # Replace the old timepoint with the new one in the image name
         new_image_name = re.sub(r't\d{3}\.png$', f't{timepoint:03}.png', image_name)
@@ -78,3 +78,34 @@ def append_yolov5_label(label_path, x_center, y_center, width, height, img_width
     # Append the new label to the file
     with open(label_path, 'a') as f:
         f.write(new_label)
+        
+def yolov5_to_xyxy(x_center, y_center, width, height, image_width, image_height):
+    # Convert YOLOv5 coordinates to real coordinates
+    x_center_real = x_center * image_width
+    y_center_real = y_center * image_height
+    box_width = width * image_width
+    box_height = height * image_height
+    
+    # Calculate top-left corner coordinates
+    x1 = x_center_real - (box_width / 2)
+    y1 = y_center_real - (box_height / 2)
+    
+    # Calculate bottom-right corner coordinates
+    x2 = x_center_real + (box_width / 2)
+    y2 = y_center_real + (box_height / 2)
+    
+    return [x1, y1, x2, y2]
+
+def yolov5_to_xywh(x_center, y_center, width, height, image_width, image_height):
+    # Convert YOLOv5 coordinates to real coordinates
+    x_center_real = x_center * image_width
+    y_center_real = y_center * image_height
+    box_width = width * image_width
+    box_height = height * image_height
+    
+    # Calculate top-left corner coordinates
+    x1 = x_center_real - (box_width / 2)
+    y1 = y_center_real - (box_height / 2)
+    
+    # Return the bounding box in xywh format
+    return [x1, y1, box_width, box_height]
