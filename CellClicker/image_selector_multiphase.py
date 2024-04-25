@@ -12,6 +12,7 @@ import numpy as np
 import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
+import cv2
 import numpy as np
 
 def load_selector(image_dict, set_index):
@@ -28,9 +29,21 @@ def load_selector(image_dict, set_index):
     root.mainloop()
     return selected_indices
 
+# def normalize_image(image):
+#     image = (image - image.min()) / (image.max() - image.min()) * 255
+#     return image.astype(np.uint8)
+
 def normalize_image(image):
-    image = (image - image.min()) / (image.max() - image.min()) * 255
-    return image.astype(np.uint8)
+        """Applies CLAHE to an image to enhance contrast locally."""
+        # Convert image to grayscale if it is in color
+        if len(image.shape) == 3:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        # Create a CLAHE object
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        cl1 = clahe.apply(image)
+    
+        return cl1
 
 def display_set(image_sets, set_index, selected_indices, root, phase):
     window = tk.Toplevel()

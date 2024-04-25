@@ -150,11 +150,11 @@ def get_phase(new_index, phases):
     # If the new index is less than or equal to all values, return None
     return None
 
-def create_yolo_labels(phase_data, labels_data, output_dir):
+def create_yolo_labels(phase_data, labels_data, output_dir, user):
     """ Generate YOLO label files considering class_id as filename reference. """
     os.makedirs(output_dir, exist_ok=True)
 
-    class_dict = {'prophase': 0, 'earlyprometphase':1, 'prometaphase': 2, 'metaphase': 3, 'anaphase': 4 }
+    class_dict = {'prophase': 0, 'earlyprometaphase':1, 'prometaphase': 2, 'metaphase': 3, 'anaphase': 4 }
     # this gets from cell_reigons the path and series id, and all the indicies
     for (path, series_id), indices in labels_data.items():
         # print(path)
@@ -173,7 +173,7 @@ def create_yolo_labels(phase_data, labels_data, output_dir):
         if phases:
             # if prometaphase exists add the early prometaphase class and shift prometaphase along 1
             if 'prometaphase' in phases:
-                phases['earlyprometphase'] = phases['prometaphase']
+                phases['earlyprometaphase'] = phases['prometaphase']
                 phases['prometaphase'] = phases['prometaphase']+1
 
                 # if there is anything before prometphase add the prophase class
@@ -183,22 +183,25 @@ def create_yolo_labels(phase_data, labels_data, output_dir):
 
             
             sorted_phases = dict(sorted(phases.items(), key=lambda item: item[1], reverse=True))
-            print(phases)
+            print(sorted_phases)
             
             for label in indices: 
 
                 new_index = len(indices) - int(label['class_id'])
-                # print(f"newindex {new_index}")
-                # print(f"looping {label}")
-                # print(phases)
-                # print(class_dict)
+                print(f"newindex {new_index}")
+                print(f"looping {label}")
+                print(phases)
                 
+                print(sorted_phases)
                 selected_phase = get_phase(new_index, sorted_phases)
+                
+                print(selected_phase)
+                print(class_dict)
 
                 new_class_id = class_dict[selected_phase]
-                # print(selected_phase)
-                # print(new_class_id)
-                # print(path)
+                print(selected_phase)
+                print(new_class_id)
+                print(path)
                 
                 filename = get_relative_image_name(path, int(label['class_id']) )
                 print(filename)
@@ -210,17 +213,19 @@ def create_yolo_labels(phase_data, labels_data, output_dir):
                 yolo_label = f"{new_class_id} {adjusted_label[1]} {adjusted_label[2]} {adjusted_label[3]} {adjusted_label[4]}"
                 
                 # Write label to corresponding file
-                filename = filename.replace('.png', '.txt').replace('images', 'new_labels')
+                filename = filename.replace('.png', '.txt').replace('images', user+'_labels')
                 with open(filename, 'a') as file:
                     file.write(yolo_label + '\n')
 
 
 
-def convert_selections_multiphase(user_xml, cell_reigons_xml, new_label_folder):
+def convert_selections_multiphase(user_xml, cell_reigons_xml, new_label_folder, user):
 # Usage
     phase_data = parse_xml_for_phases(user_xml)
+    print(phase_data)
     labels_data = parse_xml_for_labels(cell_reigons_xml)
-    create_yolo_labels(phase_data, labels_data, new_label_folder)
+    print(labels_data)
+    create_yolo_labels(phase_data, labels_data, new_label_folder, user)
 # phase_data = parse_xml_for_phases('E:/Scott/Data/20240417/user_selections/Sara.xml')
 # labels_data = parse_xml_for_labels('E:/Scott/Data/20240417/images/cell_reigons.xml')
 # create_yolo_labels(phase_data, labels_data, 'E:/Scott/Data/20240417/new_labels')
