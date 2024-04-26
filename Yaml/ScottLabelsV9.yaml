@@ -1,0 +1,9 @@
+names:
+ 0: prophase
+ 1: earlyprometaphase
+ 2: prometaphase
+ 3: metaphase
+ 4: anaphase
+path: ..
+train: E:\Scott\Data\20231110\images
+val: E:\Scott\Data\20240417\images
