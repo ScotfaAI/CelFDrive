@@ -25,7 +25,7 @@ def load_selector(image_dict, set_index):
     root = tk.Tk()
     root.withdraw()  # Hide the main window
     print(f"Loading {len(image_sets)} image sets")
-    display_set(image_sets, set_index, selected_indices, root, "prometaphase")
+    display_set(image_sets, set_index, selected_indices, root, "earlyprometaphase")
     root.mainloop()
     return selected_indices
 
@@ -47,7 +47,7 @@ def normalize_image(image):
 
 def display_set(image_sets, set_index, selected_indices, root, phase):
     window = tk.Toplevel()
-    window.title(f"Select Image for {phase.capitalize()} from Set {set_index + 1}")
+    window.title(f"Select Image for {phase.capitalize()} from Set {set_index + 1} of {len(image_sets)}")
     series = image_sets[set_index]
     set_len = len(series)
 
@@ -83,7 +83,7 @@ def on_selection_clicked(index, window, image_sets, selected_indices, root, set_
     handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index)
 
 def handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index):
-    phases = ['prometaphase', 'metaphase', 'anaphase']
+    phases = ['earlyprometaphase', 'lateprometaphase', 'metaphase', 'anaphase']
     next_index = phases.index(phase) + 1
     if next_index < len(phases):
         display_set(image_sets, set_index, selected_indices, root, phases[next_index])
@@ -97,11 +97,11 @@ def handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_inde
 
 def on_blurry_clicked(window, image_sets, selected_indices, root, set_index):
     if len(selected_indices) <= set_index:
-        selected_indices.append({phase: 'blurry' for phase in ['prometaphase', 'metaphase', 'anaphase']})
+        selected_indices.append({phase: 'blurry' for phase in ['earlyprometaphase', 'lateprometaphase', 'metaphase', 'anaphase']})
 
     window.destroy()
     if set_index + 1 < len(image_sets):
-        display_set(image_sets, set_index + 1, selected_indices, root, "prometaphase")
+        display_set(image_sets, set_index + 1, selected_indices, root, "earlyprometaphase")
     else:
         messagebox.showinfo("Completed", "All selections completed.")
         root.quit()

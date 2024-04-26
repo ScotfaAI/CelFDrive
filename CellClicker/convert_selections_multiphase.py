@@ -154,7 +154,7 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user):
     """ Generate YOLO label files considering class_id as filename reference. """
     os.makedirs(output_dir, exist_ok=True)
 
-    class_dict = {'prophase': 0, 'earlyprometaphase':1, 'prometaphase': 2, 'metaphase': 3, 'anaphase': 4 }
+    class_dict = {'prophase': 0, 'earlyprometaphase':1, 'prometaphase': 2, 'lateprometaphase': 3, 'metaphase': 4, 'anaphase': 5 }
     # this gets from cell_reigons the path and series id, and all the indicies
     for (path, series_id), indices in labels_data.items():
         # print(path)
@@ -171,14 +171,20 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user):
 
         print(phases)
         if phases:
-            # if prometaphase exists add the early prometaphase class and shift prometaphase along 1
-            if 'prometaphase' in phases:
-                phases['earlyprometaphase'] = phases['prometaphase']
-                phases['prometaphase'] = phases['prometaphase']+1
+            # if earlyprometaphase exists add the early prometaphase class and shift prometaphase along 1
+            if 'earlyprometaphase' in phases:
+                phases['prometaphase'] = phases['earlyprometaphase']+1
 
-                # if there is anything before prometphase add the prophase class
-                if phases['prometaphase'] > 0:
+                # if there is anything before earlyprometphase add the prophase class
+                if phases['earlyprometaphase'] > 0:
                     phases['prophase'] = 0
+            elif 'lateprometaphase' in phases:
+                if phases['lateprometaphase'] > 0:
+                    phases['prometaphase'] = 0 
+            elif 'metaphase' in phases:
+                if phases['metaphase'] > 0:
+                    phases['lateprometaphase'] = 0 
+
 
 
             
@@ -222,9 +228,9 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user):
 def convert_selections_multiphase(user_xml, cell_reigons_xml, new_label_folder, user):
 # Usage
     phase_data = parse_xml_for_phases(user_xml)
-    print(phase_data)
+    # print(phase_data)
     labels_data = parse_xml_for_labels(cell_reigons_xml)
-    print(labels_data)
+    # print(labels_data)
     create_yolo_labels(phase_data, labels_data, new_label_folder, user)
 # phase_data = parse_xml_for_phases('E:/Scott/Data/20240417/user_selections/Sara.xml')
 # labels_data = parse_xml_for_labels('E:/Scott/Data/20240417/images/cell_reigons.xml')
