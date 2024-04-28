@@ -45,15 +45,25 @@ def normalize_image(image):
     
         return cl1
 
+# need to add pick up where we left off
 def display_set(image_sets, set_index, selected_indices, root, phase):
     window = tk.Toplevel()
     window.title(f"Select Image for {phase.capitalize()} from Set {set_index + 1} of {len(image_sets)}")
+    
     series = image_sets[set_index]
     set_len = len(series)
+    max_images_per_row = 13 
+    min_window_width = 100*max_images_per_row  # Calculate minimum width based on max images per row and their thumbnail size
+    window.minsize(min_window_width, 0) 
+
+    
 
     photo_images = []  # To store PhotoImage references and prevent garbage collection
 
     for i, img_array in enumerate(series):
+        row = i // max_images_per_row  # Determine which row to place the image
+        column = i % max_images_per_row  # Determine which column to place the image
+
         img_array = normalize_image(img_array)
         img = Image.fromarray(img_array)
         img.thumbnail((100, 100))
@@ -62,23 +72,26 @@ def display_set(image_sets, set_index, selected_indices, root, phase):
 
         btn = tk.Button(window, image=img_tk, command=lambda i=i: on_selection_clicked(i, window, image_sets, selected_indices, root, set_len, phase, set_index))
         btn.image = img_tk  # Keep a reference
-        btn.grid(row=0, column=i)
+        btn.grid(row=row, column=column)
 
     window.geometry("+100+100")  # Optional: Position the window at a specific location
 
     # Buttons for skipping phase and marking blurry
     skip_btn = tk.Button(window, text="Skip Phase", command=lambda: on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index))
-    skip_btn.grid(row=1, column=0, sticky='ew')
+    skip_btn.grid(row=(set_len // max_images_per_row + 1), column=0, sticky='ew')
 
     blurry_btn = tk.Button(window, text="Mark as Blurry", command=lambda: on_blurry_clicked(window, image_sets, selected_indices, root, set_index))
-    blurry_btn.grid(row=1, column=1, sticky='ew', columnspan=set_len)
+    blurry_btn.grid(row=(set_len // max_images_per_row + 1), column=1, sticky='ew', columnspan=set_len)
 
+# clicks and sets output
 def on_selection_clicked(index, window, image_sets, selected_indices, root, set_len, phase, set_index):
+    #  creates new dict if not at the end
     if len(selected_indices) <= set_index:
         selected_indices.append({})
 
     selected_indices[set_index][phase] = index
     print(f"Selected {phase} in set {set_index + 1}: {index}")
+    
     window.destroy()
     handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index)
 
@@ -143,6 +156,7 @@ def load_ui_from_folder():
     name_xml = run_name_selector(selections_folder)
     print(f"Selected XML: {name_xml}")
     images_dict = get_all_images(cell_xml)
+    print(images_dict)
     selected_indicies = load_selector(images_dict, 0)
     print(selected_indicies)
     store_results_multiclass(images_dict, selected_indicies, name_xml)

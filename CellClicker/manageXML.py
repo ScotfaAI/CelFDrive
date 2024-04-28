@@ -21,7 +21,7 @@ def check_xml(xml_path):
         
     return cell_xml_to_dataframe_absfilenames(xml_path)
 
-
+# suspect label_name not needed anymore, currently used to find out if something exists
 def find_labels_and_extract_rois(xml_path, label_name, image_path):
     labels = {}
     first_label_name = label_name
@@ -29,7 +29,7 @@ def find_labels_and_extract_rois(xml_path, label_name, image_path):
     # Parse the XML file
     tree = ET.parse(xml_path)
     root = tree.getroot()
-    print(convert_path_format(label_name))
+    # print(convert_path_format(label_name))
     # print("searching...")
 
     # Find the parent element with the specified label name
@@ -195,7 +195,9 @@ def get_all_images(xml_path):
     if not os.path.exists(xml_path):
         return 0  # Return 0 if the XML file doesn't exist
     
-    
+    # here we need to make this run across devices, so if the location has changed we connect via the folder name
+    print(xml_path)
+
 #     print("running")
     label_names = get_all_label_names(xml_path)
 #     print(label_names)
@@ -204,6 +206,8 @@ def get_all_images(xml_path):
     allimages = {}
     for (label_path, image_path) in zip(label_names, image_names):
 #         print(label_path, image_path)
+        image_path = xml_path.split("cell_reigons.xml")[0]+image_path.split("/images/")[1]
+        print("finding: " +image_path)
         image_dict = find_labels_and_extract_rois(xml_path, label_path, image_path)
 #         print(image)
         for series_id in image_dict.keys():
