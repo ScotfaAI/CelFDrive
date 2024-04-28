@@ -1,0 +1,33 @@
+name: CellToolsGPU
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+dependencies:
+  - python=3.9
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pip
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - scikit-image
+  - pillow
+  - seaborn
+  - tqdm
+  - pip:
+      - dill==0.3.8
+      - opencv-contrib-python
+      - networkx==3.2.1
+      - tifffile==2024.2.12
+      - imageio==2.34.0
+      - fsspec==2024.2.0
+      - openpyxl
+      - torch
+      - torchvision
+      - torchaudio
+      - ultralytics
+      - jupyter
+prefix: C:\Users\u1604360\anaconda3\envs\CellToolsGPU
