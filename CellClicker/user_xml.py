@@ -41,7 +41,7 @@ def update_xml_multiclass(file_name, series_id, selected_indices, xml_file_name)
     root = tree.getroot()
 
     # Define the phases
-    phases = ['prometaphase', 'metaphase', 'anaphase']
+    phases = ['earlyprometaphase','lateprometaphase', 'metaphase', 'anaphase']
 
     # Search for an existing entry with the same "File" and "SeriesID"
     for data_entry in root.findall('DataEntry'):
