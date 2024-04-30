@@ -25,7 +25,7 @@ def load_selector(image_dict, set_index, phases):
     root = tk.Tk()
     root.withdraw()  # Hide the main window
     print(f"Loading {len(image_sets)} image sets")
-    display_set(image_sets, set_index, selected_indices, root, "earlyprometaphase", phases)
+    display_set(image_sets, set_index, selected_indices, root, phases[0], phases)
     root.mainloop()
     return selected_indices
 
@@ -81,7 +81,14 @@ def display_set(image_sets, set_index, selected_indices, root, phase, phases):
     skip_btn.grid(row=(set_len // max_images_per_row + 1), column=0, sticky='ew')
 
     blurry_btn = tk.Button(window, text="Mark as Blurry", command=lambda: on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases))
-    blurry_btn.grid(row=(set_len // max_images_per_row + 1), column=1, sticky='ew', columnspan=set_len)
+    blurry_btn.grid(row=(set_len // max_images_per_row + 1), column=1, sticky='ew')
+    # print(set_index)
+    # Back Button
+    if selected_indices:
+    # if set_index > 0 or (set_index == 0 and len(selected_indices[set_index]) > 1):
+        back_btn = tk.Button(window, text="Back", command=lambda: go_back(window, image_sets, selected_indices, root, phase, set_index, phases))
+        back_btn.grid(row=(set_len // max_images_per_row + 1), column=2, sticky='ew')
+
 
 # clicks and sets output
 def on_selection_clicked(index, window, image_sets, selected_indices, root, set_len, phase, set_index, phases):
@@ -93,20 +100,21 @@ def on_selection_clicked(index, window, image_sets, selected_indices, root, set_
     print(f"Selected {phase} in set {set_index + 1}: {index}")
     
     window.destroy()
-    handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index, phases)
+    handle_next_phase_or_set(window,image_sets, selected_indices, root, phase, set_index, phases)
 
-def handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index, phases):
+def handle_next_phase_or_set(window,image_sets, selected_indices, root, phase, set_index, phases):
     
     next_index = phases.index(phase) + 1
     if next_index < len(phases):
-        display_set(image_sets, set_index, selected_indices, root, phases[next_index])
+        display_set(image_sets, set_index, selected_indices, root, phases[next_index], phases)
     else:
         if set_index + 1 < len(image_sets):
-            display_set(image_sets, set_index + 1, selected_indices, root, phases[0])
+            display_set(image_sets, set_index + 1, selected_indices, root, phases[0], phases)
         else:
             messagebox.showinfo("Completed", "All selections completed.")
             print("Final selections:", selected_indices)
             root.quit()
+            root.destroy()
 
 def on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases):
     if len(selected_indices) <= set_index:
@@ -114,21 +122,33 @@ def on_blurry_clicked(window, image_sets, selected_indices, root, set_index, pha
 
     window.destroy()
     if set_index + 1 < len(image_sets):
-        display_set(image_sets, set_index + 1, selected_indices, root, "earlyprometaphase")
+        display_set(image_sets, set_index + 1, selected_indices, root, phases[0], phases)
     else:
         messagebox.showinfo("Completed", "All selections completed.")
         root.quit()
+        root.destroy()
 
-def on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index):
+def on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index, phases):
     if len(selected_indices) <= set_index:
         selected_indices.append({})
 
     selected_indices[set_index][phase] = 'skipped'
     print(f"Skipped {phase} in set {set_index + 1}")
     window.destroy()
-    handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index)
+    handle_next_phase_or_set(window, image_sets, selected_indices, root, phase, set_index, phases)
 
-
+def go_back(window, image_sets, selected_indices, root, phase, set_index, phases):
+    if set_index > 0 or (set_index == 0 and len(selected_indices[set_index]) > 1):
+        # Revert to previous phase or image set
+        previous_phase_index = phases.index(phase) - 1
+        if previous_phase_index >= 0:
+            # Go back within the same set
+            display_set(image_sets, set_index, selected_indices, root, phases[previous_phase_index], phases)
+        else:
+            # Go back to the previous set
+            if set_index > 0:
+                display_set(image_sets, set_index - 1, selected_indices, root, phases[-1], phases)
+    window.destroy()
 
         
 
