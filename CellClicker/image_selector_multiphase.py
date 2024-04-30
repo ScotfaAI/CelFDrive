@@ -13,9 +13,9 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 import cv2
-import numpy as np
 
-def load_selector(image_dict, set_index):
+def load_selector(image_dict, set_index, phases):
+    
     selected_indices = []
     image_sets = []
 
@@ -25,7 +25,7 @@ def load_selector(image_dict, set_index):
     root = tk.Tk()
     root.withdraw()  # Hide the main window
     print(f"Loading {len(image_sets)} image sets")
-    display_set(image_sets, set_index, selected_indices, root, "earlyprometaphase")
+    display_set(image_sets, set_index, selected_indices, root, "earlyprometaphase", phases)
     root.mainloop()
     return selected_indices
 
@@ -46,9 +46,9 @@ def normalize_image(image):
         return cl1
 
 # need to add pick up where we left off
-def display_set(image_sets, set_index, selected_indices, root, phase):
+def display_set(image_sets, set_index, selected_indices, root, phase, phases):
     window = tk.Toplevel()
-    window.title(f"Select Image for {phase.capitalize()} from Set {set_index + 1} of {len(image_sets)}")
+    window.title(f"Select First frame visible for {phase.capitalize()} - Set {set_index + 1} of {len(image_sets)}")
     
     series = image_sets[set_index]
     set_len = len(series)
@@ -70,21 +70,21 @@ def display_set(image_sets, set_index, selected_indices, root, phase):
         img_tk = ImageTk.PhotoImage(img)
         photo_images.append(img_tk)
 
-        btn = tk.Button(window, image=img_tk, command=lambda i=i: on_selection_clicked(i, window, image_sets, selected_indices, root, set_len, phase, set_index))
+        btn = tk.Button(window, image=img_tk, command=lambda i=i: on_selection_clicked(i, window, image_sets, selected_indices, root, set_len, phase, set_index, phases))
         btn.image = img_tk  # Keep a reference
         btn.grid(row=row, column=column)
 
     window.geometry("+100+100")  # Optional: Position the window at a specific location
 
     # Buttons for skipping phase and marking blurry
-    skip_btn = tk.Button(window, text="Skip Phase", command=lambda: on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index))
+    skip_btn = tk.Button(window, text="Skip Phase", command=lambda: on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index, phases))
     skip_btn.grid(row=(set_len // max_images_per_row + 1), column=0, sticky='ew')
 
-    blurry_btn = tk.Button(window, text="Mark as Blurry", command=lambda: on_blurry_clicked(window, image_sets, selected_indices, root, set_index))
+    blurry_btn = tk.Button(window, text="Mark as Blurry", command=lambda: on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases))
     blurry_btn.grid(row=(set_len // max_images_per_row + 1), column=1, sticky='ew', columnspan=set_len)
 
 # clicks and sets output
-def on_selection_clicked(index, window, image_sets, selected_indices, root, set_len, phase, set_index):
+def on_selection_clicked(index, window, image_sets, selected_indices, root, set_len, phase, set_index, phases):
     #  creates new dict if not at the end
     if len(selected_indices) <= set_index:
         selected_indices.append({})
@@ -93,10 +93,10 @@ def on_selection_clicked(index, window, image_sets, selected_indices, root, set_
     print(f"Selected {phase} in set {set_index + 1}: {index}")
     
     window.destroy()
-    handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index)
+    handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index, phases)
 
-def handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index):
-    phases = ['earlyprometaphase', 'lateprometaphase', 'metaphase', 'anaphase']
+def handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_index, phases):
+    
     next_index = phases.index(phase) + 1
     if next_index < len(phases):
         display_set(image_sets, set_index, selected_indices, root, phases[next_index])
@@ -108,9 +108,9 @@ def handle_next_phase_or_set(image_sets, selected_indices, root, phase, set_inde
             print("Final selections:", selected_indices)
             root.quit()
 
-def on_blurry_clicked(window, image_sets, selected_indices, root, set_index):
+def on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases):
     if len(selected_indices) <= set_index:
-        selected_indices.append({phase: 'blurry' for phase in ['earlyprometaphase', 'lateprometaphase', 'metaphase', 'anaphase']})
+        selected_indices.append({phase: 'blurry' for phase in phases})
 
     window.destroy()
     if set_index + 1 < len(image_sets):
@@ -135,6 +135,7 @@ def on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index
 
 def load_ui(cell_xml):
     # Call the UI function to run the name selector
+    
     name_xml = run_name_selector("select_xmls")
     print(f"Selected XML: {name_xml}")
     images_dict = get_all_images(cell_xml)
@@ -143,6 +144,7 @@ def load_ui(cell_xml):
 
 def load_ui_from_folder():
     # Call the UI function to run the name selector
+    phases = ['prophase','earlyprometaphase', 'prometaphase', 'metaphase', 'anaphase', 'telophase']
 
     directory = filedialog.askdirectory(title="Select Directory with Images")
     if not directory:
@@ -157,9 +159,9 @@ def load_ui_from_folder():
     print(f"Selected XML: {name_xml}")
     images_dict = get_all_images(cell_xml)
     print(images_dict)
-    selected_indicies = load_selector(images_dict, 0)
+    selected_indicies = load_selector(images_dict, 0, phases)
     print(selected_indicies)
-    store_results_multiclass(images_dict, selected_indicies, name_xml)
+    store_results_multiclass(images_dict, selected_indicies, name_xml, phases)
     
 def xml_to_labels(name_xml, cell_xml):
     

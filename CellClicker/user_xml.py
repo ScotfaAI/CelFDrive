@@ -35,13 +35,13 @@ def update_xml(file_name, series_id, selected_index, xml_file_name):
     # Save the updated XML to the file
     tree.write(xml_file_name)
 
-def update_xml_multiclass(file_name, series_id, selected_indices, xml_file_name):
+def update_xml_multiclass(file_name, series_id, selected_indices, xml_file_name, phases):
     # Parse the existing XML file
     tree = ET.parse(xml_file_name)
     root = tree.getroot()
 
     # Define the phases
-    phases = ['earlyprometaphase','lateprometaphase', 'metaphase', 'anaphase']
+    
 
     # Search for an existing entry with the same "File" and "SeriesID"
     for data_entry in root.findall('DataEntry'):
@@ -85,11 +85,11 @@ def store_results(images_dict, selected_indicies, name_xml):
         print(file_name, series_id, selected_index, name_xml)
         update_xml(file_name, series_id, selected_index, name_xml)    
 
-def store_results_multiclass(images_dict, selected_indicies, name_xml):
+def store_results_multiclass(images_dict, selected_indicies, name_xml, phases):
 
     for (file_name, series_id ), selected_index_dict in zip(images_dict.keys(), selected_indicies):
         print(file_name, series_id, selected_index_dict, name_xml)
-        update_xml_multiclass(file_name, series_id, selected_index_dict, name_xml)    
+        update_xml_multiclass(file_name, series_id, selected_index_dict, name_xml, phases)    
 
 
 def read_xml_to_dataframe(xml_file):
