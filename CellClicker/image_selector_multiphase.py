@@ -19,7 +19,11 @@ def load_selector(image_dict, set_index, phases):
     selected_indices = []
     image_sets = []
 
+    set_count = 0
+
     for (image_name, series_id) in image_dict.keys():
+        set_count+=1
+        print(f'{set_count}: {image_name}')
         image_sets.append(image_dict[(image_name, series_id)])
 
     root = tk.Tk()
