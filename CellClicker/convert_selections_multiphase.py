@@ -106,7 +106,7 @@ def parse_xml_for_phases(xml_file):
         series_id = entry.find('SeriesID').text
         indices = {
             phase.tag: int(phase.text) for phase in entry
-            if phase.tag in ['prometaphase', 'metaphase', 'anaphase'] and phase.text.isdigit()
+            if phase.tag in ['prophase','earlyprometaphase','prometaphase', 'metaphase', 'anaphase', 'telophase'] and phase.text.isdigit()
         }
         image_data[(path, series_id)] = indices
     return image_data
@@ -154,7 +154,7 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user):
     """ Generate YOLO label files considering class_id as filename reference. """
     os.makedirs(output_dir, exist_ok=True)
 
-    class_dict = {'prophase': 0, 'earlyprometaphase':1, 'prometaphase': 2, 'lateprometaphase': 3, 'metaphase': 4, 'anaphase': 5 }
+    class_dict = {'prophase': 0, 'earlyprometaphase':1, 'prometaphase': 2, 'metaphase': 3, 'anaphase': 4, 'telophase': 5 }
     # this gets from cell_reigons the path and series id, and all the indicies
     for (path, series_id), indices in labels_data.items():
         # print(path)
@@ -172,18 +172,18 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user):
         print(phases)
         if phases:
             # if earlyprometaphase exists add the early prometaphase class and shift prometaphase along 1
-            if 'earlyprometaphase' in phases:
-                phases['prometaphase'] = phases['earlyprometaphase']+1
+            # if 'earlyprometaphase' in phases:
+            #     phases['prometaphase'] = phases['earlyprometaphase']+1
 
-                # if there is anything before earlyprometphase add the prophase class
-                if phases['earlyprometaphase'] > 0:
-                    phases['prophase'] = 0
-            elif 'lateprometaphase' in phases:
-                if phases['lateprometaphase'] > 0:
-                    phases['prometaphase'] = 0 
-            elif 'metaphase' in phases:
-                if phases['metaphase'] > 0:
-                    phases['lateprometaphase'] = 0 
+            #     # if there is anything before earlyprometphase add the prophase class
+            #     if phases['earlyprometaphase'] > 0:
+            #         phases['prophase'] = 0
+            # elif 'lateprometaphase' in phases:
+            #     if phases['lateprometaphase'] > 0:
+            #         phases['prometaphase'] = 0 
+            # elif 'metaphase' in phases:
+            #     if phases['metaphase'] > 0:
+            #         phases['lateprometaphase'] = 0 
 
 
 
@@ -203,25 +203,25 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user):
                 
                 print(selected_phase)
                 print(class_dict)
+                if selected_phase:
+                    new_class_id = class_dict[selected_phase]
+                    print(selected_phase)
+                    print(new_class_id)
+                    print(path)
+                    
+                    filename = get_relative_image_name(path, int(label['class_id']) )
+                    print(filename)
 
-                new_class_id = class_dict[selected_phase]
-                print(selected_phase)
-                print(new_class_id)
-                print(path)
-                
-                filename = get_relative_image_name(path, int(label['class_id']) )
-                print(filename)
-
-                adjusted_label = adjust_bbox_via_threshold(filename, new_class_id, label['x_center'], label['y_center'], label['width'], label['height'])
-                print(adjusted_label)
-                
-                # yolo_label = f"{new_class_id} {label['x_center']} {label['y_center']} {label['width']} {label['height']}"
-                yolo_label = f"{new_class_id} {adjusted_label[1]} {adjusted_label[2]} {adjusted_label[3]} {adjusted_label[4]}"
-                
-                # Write label to corresponding file
-                filename = filename.replace('.png', '.txt').replace('images', user+'_labels')
-                with open(filename, 'a') as file:
-                    file.write(yolo_label + '\n')
+                    adjusted_label = adjust_bbox_via_threshold(filename, new_class_id, label['x_center'], label['y_center'], label['width'], label['height'])
+                    print(adjusted_label)
+                    
+                    # yolo_label = f"{new_class_id} {label['x_center']} {label['y_center']} {label['width']} {label['height']}"
+                    yolo_label = f"{new_class_id} {adjusted_label[1]} {adjusted_label[2]} {adjusted_label[3]} {adjusted_label[4]}"
+                    
+                    # Write label to corresponding file
+                    filename = filename.replace('.png', '.txt').replace('images', user+'_labels')
+                    with open(filename, 'a') as file:
+                        file.write(yolo_label + '\n')
 
 
 
