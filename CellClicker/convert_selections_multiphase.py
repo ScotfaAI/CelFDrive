@@ -150,15 +150,18 @@ def get_phase(new_index, phases):
     # If the new index is less than or equal to all values, return None
     return None
 
-def create_yolo_labels(phase_data, labels_data, output_dir, user):
+def create_yolo_labels(phase_data, labels_data, output_dir, user, imgpath):
     """ Generate YOLO label files considering class_id as filename reference. """
     os.makedirs(output_dir, exist_ok=True)
 
     class_dict = {'prophase': 0, 'earlyprometaphase':1, 'prometaphase': 2, 'metaphase': 3, 'anaphase': 4, 'telophase': 5 }
     # this gets from cell_reigons the path and series id, and all the indicies
     for (path, series_id), indices in labels_data.items():
-        # print(path)
+        
+        # get phase results 
         phases = phase_data.get((path, series_id), [])
+        # set path to current system
+        path = imgpath+"/images/"+path.split("/images/")[1]
 
 # Create a  copy of the dictionary to avoid modifying it while iterating
         phases_copy = phases.copy()
@@ -225,13 +228,13 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user):
 
 
 
-def convert_selections_multiphase(user_xml, cell_reigons_xml, new_label_folder, user):
+def convert_selections_multiphase(user_xml, cell_reigons_xml, new_label_folder, user, imgpath):
 # Usage
     phase_data = parse_xml_for_phases(user_xml)
     # print(phase_data)
     labels_data = parse_xml_for_labels(cell_reigons_xml)
     # print(labels_data)
-    create_yolo_labels(phase_data, labels_data, new_label_folder, user)
+    create_yolo_labels(phase_data, labels_data, new_label_folder, user, imgpath)
 # phase_data = parse_xml_for_phases('E:/Scott/Data/20240417/user_selections/Sara.xml')
 # labels_data = parse_xml_for_labels('E:/Scott/Data/20240417/images/cell_reigons.xml')
 # create_yolo_labels(phase_data, labels_data, 'E:/Scott/Data/20240417/new_labels')

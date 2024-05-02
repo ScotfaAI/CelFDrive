@@ -5,11 +5,11 @@ names:
  3: metaphase
  4: anaphase
  5: telophase
-path: ../../TraingingData
+path: ../../TrainingData
 train:
-- 20240417/images
-- 20240425/images
-- 20240430/images
-- 20231110/images
+- 20240417/Scott/cropped/images
+- 20240425/Scott/cropped/images
+- 20240430/Scott/cropped/images
+- 20231110/Scott/cropped/images
 val:
-- 20240418/images
+- 20240418/Scott/cropped/images
