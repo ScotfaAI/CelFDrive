@@ -7,6 +7,7 @@ from .name_selector import run_name_selector
 from .manageXML import append_cell_regions_xml, find_labels_and_extract_rois, get_all_label_names, get_series_count_for_label, get_all_images, cell_xml_to_dataframe
 from .user_xml import store_results, store_results_multiclass, read_xml_to_dataframe
 from .convert_selections import modify_class_ids, append_modified_labels
+from .convert_selections_multiphase import parse_xml_for_phases, parse_xml_for_phases_resume
 import numpy as np
 
 import tkinter as tk
@@ -14,7 +15,7 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 import cv2
 
-def load_selector(image_dict, set_index, phases):
+def load_selector(image_dict, set_index, phases, name_xml):
     
     selected_indices = []
     image_sets = []
@@ -29,7 +30,7 @@ def load_selector(image_dict, set_index, phases):
     root = tk.Tk()
     root.withdraw()  # Hide the main window
     print(f"Loading {len(image_sets)} image sets")
-    display_set(image_sets, set_index, selected_indices, root, phases[0], phases)
+    display_set(image_sets, set_index, selected_indices, root, phases[0], phases, name_xml)
     root.mainloop()
     return selected_indices
 
@@ -50,7 +51,7 @@ def normalize_image(image):
         return cl1
 
 # need to add pick up where we left off
-def display_set(image_sets, set_index, selected_indices, root, phase, phases):
+def display_set(image_sets, set_index, selected_indices, root, phase, phases, name_xml):
     window = tk.Toplevel()
     window.title(f"Select First frame visible for {phase.capitalize()} - Set {set_index + 1} of {len(image_sets)}")
     
@@ -74,28 +75,52 @@ def display_set(image_sets, set_index, selected_indices, root, phase, phases):
         img_tk = ImageTk.PhotoImage(img)
         photo_images.append(img_tk)
 
-        btn = tk.Button(window, image=img_tk, command=lambda i=i: on_selection_clicked(i, window, image_sets, selected_indices, root, set_len, phase, set_index, phases))
+        btn = tk.Button(window, image=img_tk, command=lambda i=i: on_selection_clicked(i, window, image_sets, selected_indices, root, set_len, phase, set_index, phases, name_xml))
         btn.image = img_tk  # Keep a reference
         btn.grid(row=row, column=column)
 
     window.geometry("+100+100")  # Optional: Position the window at a specific location
 
     # Buttons for skipping phase and marking blurry
-    skip_btn = tk.Button(window, text="Skip Phase", command=lambda: on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index, phases))
+    skip_btn = tk.Button(window, text="Skip Phase", command=lambda: on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index, phases, name_xml))
     skip_btn.grid(row=(set_len // max_images_per_row + 1), column=0, sticky='ew')
 
-    blurry_btn = tk.Button(window, text="Mark as Blurry", command=lambda: on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases))
+    blurry_btn = tk.Button(window, text="Mark as Blurry", command=lambda: on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases, name_xml))
     blurry_btn.grid(row=(set_len // max_images_per_row + 1), column=1, sticky='ew')
+
+    resume_btn = tk.Button(window, text="Resume", command=lambda: on_resume_clicked(window, image_sets, selected_indices, root, phase, set_index, phases, name_xml))
+    resume_btn.grid(row=(set_len // max_images_per_row + 1), column=4, sticky='ew')
     # print(set_index)
     # Back Button
     if selected_indices:
     # if set_index > 0 or (set_index == 0 and len(selected_indices[set_index]) > 1):
-        back_btn = tk.Button(window, text="Back", command=lambda: go_back(window, image_sets, selected_indices, root, phase, set_index, phases))
+        back_btn = tk.Button(window, text="Back", command=lambda: go_back(window, image_sets, selected_indices, root, phase, set_index, phases, name_xml))
         back_btn.grid(row=(set_len // max_images_per_row + 1), column=2, sticky='ew')
 
+        save_btn = tk.Button(window, text="Save", command=lambda: on_save_clicked(selected_indices, phases, name_xml))
+        save_btn.grid(row=(set_len // max_images_per_row + 1), column=3, sticky='ew')
+
+def on_resume_clicked(window,image_sets, selected_indices, root, phase, set_index, phases, name_xml):
+    stored_selections = parse_xml_for_phases_resume(name_xml)
+    print(stored_selections)
+    
+    
+    
+    for stored in stored_selections.values():
+        print(stored)
+        selected_indices.append(stored)
+        set_index+=1
+
+
+    window.destroy()
+    display_set(image_sets, set_index, selected_indices, root, phases[0], phases, name_xml)
+
+def on_save_clicked(selected_indices, phases, name_xml):
+    
+    store_results_multiclass(images_dict, selected_indices, name_xml, phases)
 
 # clicks and sets output
-def on_selection_clicked(index, window, image_sets, selected_indices, root, set_len, phase, set_index, phases):
+def on_selection_clicked(index, window, image_sets, selected_indices, root, set_len, phase, set_index, phases, name_xml):
     #  creates new dict if not at the end
     if len(selected_indices) <= set_index:
         selected_indices.append({})
@@ -104,54 +129,54 @@ def on_selection_clicked(index, window, image_sets, selected_indices, root, set_
     print(f"Selected {phase} in set {set_index + 1}: {index}")
     
     window.destroy()
-    handle_next_phase_or_set(window,image_sets, selected_indices, root, phase, set_index, phases)
+    handle_next_phase_or_set(window,image_sets, selected_indices, root, phase, set_index, phases, name_xml)
 
-def handle_next_phase_or_set(window,image_sets, selected_indices, root, phase, set_index, phases):
+def handle_next_phase_or_set(window,image_sets, selected_indices, root, phase, set_index, phases, name_xml):
     
     next_index = phases.index(phase) + 1
     if next_index < len(phases):
-        display_set(image_sets, set_index, selected_indices, root, phases[next_index], phases)
+        display_set(image_sets, set_index, selected_indices, root, phases[next_index], phases, name_xml)
     else:
         if set_index + 1 < len(image_sets):
-            display_set(image_sets, set_index + 1, selected_indices, root, phases[0], phases)
+            display_set(image_sets, set_index + 1, selected_indices, root, phases[0], phases, name_xml)
         else:
             messagebox.showinfo("Completed", "All selections completed.")
             print("Final selections:", selected_indices)
             root.quit()
             root.destroy()
 
-def on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases):
+def on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases, name_xml):
     if len(selected_indices) <= set_index:
         selected_indices.append({phase: 'blurry' for phase in phases})
 
     window.destroy()
     if set_index + 1 < len(image_sets):
-        display_set(image_sets, set_index + 1, selected_indices, root, phases[0], phases)
+        display_set(image_sets, set_index + 1, selected_indices, root, phases[0], phases, name_xml)
     else:
         messagebox.showinfo("Completed", "All selections completed.")
         root.quit()
         root.destroy()
 
-def on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index, phases):
+def on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index, phases, name_xml):
     if len(selected_indices) <= set_index:
         selected_indices.append({})
 
     selected_indices[set_index][phase] = 'skipped'
     print(f"Skipped {phase} in set {set_index + 1}")
     window.destroy()
-    handle_next_phase_or_set(window, image_sets, selected_indices, root, phase, set_index, phases)
+    handle_next_phase_or_set(window, image_sets, selected_indices, root, phase, set_index, phases, name_xml)
 
-def go_back(window, image_sets, selected_indices, root, phase, set_index, phases):
+def go_back(window, image_sets, selected_indices, root, phase, set_index, phases, name_xml):
     if set_index > 0 or (set_index == 0 and len(selected_indices[set_index]) > 1):
         # Revert to previous phase or image set
         previous_phase_index = phases.index(phase) - 1
         if previous_phase_index >= 0:
             # Go back within the same set
-            display_set(image_sets, set_index, selected_indices, root, phases[previous_phase_index], phases)
+            display_set(image_sets, set_index, selected_indices, root, phases[previous_phase_index], phases, name_xml)
         else:
             # Go back to the previous set
             if set_index > 0:
-                display_set(image_sets, set_index - 1, selected_indices, root, phases[-1], phases)
+                display_set(image_sets, set_index - 1, selected_indices, root, phases[-1], phases, name_xml)
     window.destroy()
 
         
@@ -181,9 +206,10 @@ def load_ui_from_folder():
 
     name_xml = run_name_selector(selections_folder)
     print(f"Selected XML: {name_xml}")
+    global images_dict
     images_dict = get_all_images(cell_xml)
     print(images_dict)
-    selected_indicies = load_selector(images_dict, 0, phases)
+    selected_indicies = load_selector(images_dict, 0, phases, name_xml)
     print(selected_indicies)
     store_results_multiclass(images_dict, selected_indicies, name_xml, phases)
     

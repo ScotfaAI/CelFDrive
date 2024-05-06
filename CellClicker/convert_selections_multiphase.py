@@ -111,6 +111,21 @@ def parse_xml_for_phases(xml_file):
         image_data[(path, series_id)] = indices
     return image_data
 
+def parse_xml_for_phases_resume(xml_file):
+    """ Parse XML and get phase indices for each image and series. """
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+    image_data = {}
+    for entry in root.findall('DataEntry'):
+        path = entry.find('PathName').text
+        series_id = entry.find('SeriesID').text
+        indices = {
+            phase.tag: int(phase.text) for phase in entry
+            if phase.tag in ['prophase','earlyprometaphase','prometaphase', 'metaphase', 'anaphase', 'telophase'] 
+        }
+        image_data[(path, series_id)] = indices
+    return image_data
+
 def parse_xml_for_labels(xml_file):
     """ Parse annotation XML and return structured label data. """
     tree = ET.parse(xml_file)
