@@ -1,0 +1,7 @@
+# Byte-compile / optimization / caching files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
