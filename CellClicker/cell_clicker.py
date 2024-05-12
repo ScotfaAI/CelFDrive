@@ -223,8 +223,22 @@ class ImageViewer:
         supported_formats = (".png", ".jpg", ".jpeg", ".bmp", ".gif")
         directory = os.path.join(directory, "images")
         directory = os.path.normpath(directory)
+        print('current image folder')
+        print(directory)
         self.xml_path = os.path.join(directory, "cell_reigons.xml")
         self.xml_df = check_xml(self.xml_path)
+        if not self.xml_df['PathName'].empty:
+            self.original_image_folder = os.path.normpath(self.xml_df['PathName'][0].split("images")[0])
+
+        else:
+            self.original_image_folder = directory.split("images")[0]
+
+        self.original_image_folder = os.path.join(self.original_image_folder, "images")
+        self.original_image_folder = os.path.normpath(self.original_image_folder)
+
+        print(f'original image folder: {self.original_image_folder}')
+
+            
         
         
         self.images = [self.normalize_path(os.path.join(directory, f)) for f in os.listdir(directory) if f.endswith(supported_formats)]
@@ -250,17 +264,19 @@ class ImageViewer:
             return
 
         img_path = self.images[self.current_image]
-        
-        
-        
-        
+        # print(img_path)
 
         self.original_image = Image.open(img_path)
+
+        # get the actual image data without the path to directory
+        img_path = os.path.normpath(img_path.split('images')[1][1:])
+        print(img_path)
+        
 #     filter to current image
         if not self.xml_df.empty:
-            # filtered_df = self.xml_df[self.xml_df['PathName'].apply(lambda path: self.norm_esc_str(path)).str.contains(self.norm_esc_str(img_path))]
+            filtered_df = self.xml_df[self.xml_df['PathName'].apply(lambda path: os.path.normpath(path)).str.contains((img_path))]
             # print(self.xml_df)
-            filtered_df = self.xml_df[self.xml_df['PathName'].str.contains(img_path)]
+            # filtered_df = self.xml_df[self.xml_df['PathName'].str.contains(img_path)]
             # print(filtered_df)
             self.existing_bboxes = filtered_df.apply(lambda row: yolov5_to_xywh(float(row['XCenter']), float(row['YCenter']), float(row['Width']), float(row['Height']), self.original_image.width, self.original_image.height), axis=1).tolist()
         else:
@@ -355,6 +371,7 @@ class ImageViewer:
 
     def update_progress(self):
         self.xml_df = check_xml(self.xml_path)
+        # print(self.xml_df)
         self.update_image()
 
     def start_clicker(self, bbox):
