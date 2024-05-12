@@ -227,7 +227,7 @@ class ImageViewer:
         print(directory)
         self.xml_path = os.path.join(directory, "cell_reigons.xml")
         self.xml_df = check_xml(self.xml_path)
-        if not self.xml_df['PathName'].empty:
+        if not self.xml_df.empty:
             self.original_image_folder = os.path.normpath(self.xml_df['PathName'][0].split("images")[0])
 
         else:
