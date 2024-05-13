@@ -10,3 +10,5 @@ CellClicker/__pycache__/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 CellClicker/.ipynb_checkpoints/
+# model output
+yolov9/
