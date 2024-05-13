@@ -2,6 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.pyc
+CellClicker/__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
+CellClicker/.ipynb_checkpoints/
