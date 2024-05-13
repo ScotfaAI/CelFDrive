@@ -12,3 +12,4 @@ CellClicker/__pycache__/
 CellClicker/.ipynb_checkpoints/
 # model output
 yolov9/
+tmp/
