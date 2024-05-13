@@ -13,3 +13,4 @@ CellClicker/.ipynb_checkpoints/
 # model output
 yolov9/
 tmp/
+*.DS_Store
