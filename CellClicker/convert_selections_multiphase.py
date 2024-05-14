@@ -168,78 +168,55 @@ def get_phase(new_index, phases):
 def create_yolo_labels(phase_data, labels_data, output_dir, user, imgpath):
     """ Generate YOLO label files considering class_id as filename reference. """
     os.makedirs(output_dir, exist_ok=True)
+    
+    class_dict = {'prophase': 0, 'earlyprometaphase': 1, 'prometaphase': 2, 'metaphase': 3, 'anaphase': 4, 'telophase': 5}
+    # limits number of the final class that can be shown
+    telophase_limit = 4
 
-    class_dict = {'prophase': 0, 'earlyprometaphase':1, 'prometaphase': 2, 'metaphase': 3, 'anaphase': 4, 'telophase': 5 }
-    # this gets from cell_reigons the path and series id, and all the indicies
     for (path, series_id), indices in labels_data.items():
+        phases = get_filtered_phases(phase_data, path, series_id, imgpath)
         
-        # get phase results 
-        phases = phase_data.get((path, series_id), [])
-        # set path to current system
-        path = imgpath+"/images/"+path.split("/images/")[1]
+        # skip if nothing returned
+        if not phases:
+            continue
+        
+        telophase_max_index = get_telophase_max_index(phases, telophase_limit, len(indices))
+        sorted_phases = sort_phases(phases)
+        
+        for label in indices[telophase_max_index:]:
+            process_label(label, indices, sorted_phases, class_dict, path, user)
 
-# Create a  copy of the dictionary to avoid modifying it while iterating
-        phases_copy = phases.copy()
+def get_filtered_phases(phase_data, path, series_id, imgpath):
+    phases = phase_data.get((path, series_id), {})
+    path = imgpath + "/images/" + path.split("/images/")[1]
+    return {k: v for k, v in phases.items() if v != -1}
 
-        # Iterate over the dictionary and remove entries where the value is -1
-        for key, value in phases_copy.items():
-            if value == -1:
-                del phases[key]
+def get_telophase_max_index(phases, telophase_limit, total_indices):
+    #  as the list of phases is reversed and the loop counts down we need total indicies - where we want to stop, in order to determine where to start, it also must substract 1 in order to adjust for slicing
+    telophase_max_index = total_indices
+    if 'telophase' in phases:
+        telophase_max_index = min(phases['telophase'] + telophase_limit, total_indices)
+    return total_indices - telophase_max_index - 1
 
+def sort_phases(phases):
+    # reverse the phases dict
+    return dict(sorted(phases.items(), key=lambda item: item[1], reverse=True))
 
-        print(phases)
-        if phases:
-            # if earlyprometaphase exists add the early prometaphase class and shift prometaphase along 1
-            # if 'earlyprometaphase' in phases:
-            #     phases['prometaphase'] = phases['earlyprometaphase']+1
+def process_label(label, indices, sorted_phases, class_dict, path, user):
+    new_index = len(indices) - int(label['class_id'])
+    selected_phase = get_phase(new_index, sorted_phases)
+    
+    if selected_phase:
+        new_class_id = class_dict[selected_phase]
+        filename = get_relative_image_name(path, int(label['class_id']))
+        adjusted_label = adjust_bbox_via_threshold(filename, new_class_id, label['x_center'], label['y_center'], label['width'], label['height'])
+        write_yolo_label(filename, user, new_class_id, adjusted_label)
 
-            #     # if there is anything before earlyprometphase add the prophase class
-            #     if phases['earlyprometaphase'] > 0:
-            #         phases['prophase'] = 0
-            # elif 'lateprometaphase' in phases:
-            #     if phases['lateprometaphase'] > 0:
-            #         phases['prometaphase'] = 0 
-            # elif 'metaphase' in phases:
-            #     if phases['metaphase'] > 0:
-            #         phases['lateprometaphase'] = 0 
-
-
-
-            
-            sorted_phases = dict(sorted(phases.items(), key=lambda item: item[1], reverse=True))
-            print(sorted_phases)
-            
-            for label in indices: 
-
-                new_index = len(indices) - int(label['class_id'])
-                print(f"newindex {new_index}")
-                print(f"looping {label}")
-                print(phases)
-                
-                print(sorted_phases)
-                selected_phase = get_phase(new_index, sorted_phases)
-                
-                print(selected_phase)
-                print(class_dict)
-                if selected_phase:
-                    new_class_id = class_dict[selected_phase]
-                    print(selected_phase)
-                    print(new_class_id)
-                    print(path)
-                    
-                    filename = get_relative_image_name(path, int(label['class_id']) )
-                    print(filename)
-
-                    adjusted_label = adjust_bbox_via_threshold(filename, new_class_id, label['x_center'], label['y_center'], label['width'], label['height'])
-                    print(adjusted_label)
-                    
-                    # yolo_label = f"{new_class_id} {label['x_center']} {label['y_center']} {label['width']} {label['height']}"
-                    yolo_label = f"{new_class_id} {adjusted_label[1]} {adjusted_label[2]} {adjusted_label[3]} {adjusted_label[4]}"
-                    
-                    # Write label to corresponding file
-                    filename = filename.replace('.png', '.txt').replace('images', user+'_labels')
-                    with open(filename, 'a') as file:
-                        file.write(yolo_label + '\n')
+def write_yolo_label(filename, user, new_class_id, adjusted_label):
+    yolo_label = f"{new_class_id} {adjusted_label[1]} {adjusted_label[2]} {adjusted_label[3]} {adjusted_label[4]}"
+    filename = filename.replace('.png', '.txt').replace('images', f"{user}_labels")
+    with open(filename, 'a') as file:
+        file.write(yolo_label + '\n')
 
 
 
