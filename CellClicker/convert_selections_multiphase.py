@@ -199,15 +199,12 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user, imgpath):
         if not phases:
             continue
         
-        telophase_max_index = get_telophase_max_index(phases, telophase_limit, len(indices))
         print(len(indices))
         telophase_max_index = get_telophase_max_index(phases, offset, total_series_length)
         
         print(f"telophase_max_index: {telophase_max_index}")
         sorted_phases = sort_phases(phases)
         
-        for label in indices[telophase_max_index:]:
-            process_label(label, indices, sorted_phases, class_dict, path, user)
         for label in indices[offset:]:
             print("label: ")
             print(label)
@@ -223,8 +220,7 @@ def get_telophase_max_index(phases, telophase_limit, total_indices):
     #  as the list of phases is reversed and the loop counts down we need total indicies - where we want to stop, in order to determine where to start, it also must substract 1 in order to adjust for slicing
     telophase_max_index = total_indices
     if 'telophase' in phases:
-        telophase_max_index = min(phases['telophase'] + telophase_limit, total_indices)
-    return total_indices - telophase_max_index - 1
+
         telophase_max_index = min(int(phases['telophase']) + telophase_limit, total_indices)
     return telophase_max_index
 
@@ -259,6 +255,7 @@ def convert_selections_multiphase(user_xml, cell_reigons_xml, new_label_folder, 
     labels_data = parse_xml_for_labels(cell_reigons_xml)
     # print(labels_data)
     create_yolo_labels(phase_data, labels_data, new_label_folder, user, imgpath)
+
 
 def calculate_median_handling_negatives(group):
     """ Calculate median, if median is -1, recalculate ignoring -1 values. """
