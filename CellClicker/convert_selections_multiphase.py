@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
-import os
 import xml.etree.ElementTree as ET
+import pandas as pd
+import os
 from .clicker_utils import get_relative_image_name
 
 
@@ -44,13 +45,22 @@ def adjust_bbox_via_threshold(image_path, label, x_center_norm, y_center_norm, w
 
     print(f"Initial Bounding Box: x_min={x_min}, y_min={y_min}, x_max={x_max}, y_max={y_max}")
 
-    # Ensure the crop remains within the image boundaries
-    x_min = max(x_min, 0)
-    y_min = max(y_min, 0)
-    x_max = min(x_max, img_w)
-    y_max = min(y_max, img_h)
+    # Expand the bounding box by 10%
+    expansion_factor = 0.1
+    width_expand = int(width * expansion_factor)
+    height_expand = int(height * expansion_factor)
+    x_min = max(x_min - width_expand, 0)
+    y_min = max(y_min - height_expand, 0)
+    x_max = min(x_max + width_expand, img_w)
+    y_max = min(y_max + height_expand, img_h)
 
-    print(f"Corrected Bounding Box: x_min={x_min}, y_min={y_min}, x_max={x_max}, y_max={y_max}")
+    print(f"Expanded Bounding Box: x_min={x_min}, y_min={y_min}, x_max={x_max}, y_max={y_max}")
+
+    # Ensure the bounding box remains within the image boundaries
+    x_min = max(0, min(x_min, img_w))
+    y_min = max(0, min(y_min, img_h))
+    x_max = max(0, min(x_max, img_w))
+    y_max = max(0, min(y_max, img_h))
 
     # Crop the relevant part of the image
     crop_img = image[y_min:y_max, x_min:x_max]
@@ -71,19 +81,19 @@ def adjust_bbox_via_threshold(image_path, label, x_center_norm, y_center_norm, w
     # Find the largest and possibly the second largest contour based on area
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
     largest_contour = contours[0]
-    if len(contours) > 1 and cv2.contourArea(contours[1]) >= 0.5 * cv2.contourArea(largest_contour):
+
+    if label in [4, 5] and len(contours) > 1 and cv2.contourArea(contours[1]) >= 0.5 * cv2.contourArea(largest_contour):
         x, y, w, h = cv2.boundingRect(np.vstack([largest_contour, contours[1]]))
     else:
         x, y, w, h = cv2.boundingRect(largest_contour)
 
     print(f"Contour Bounding Box: x={x}, y={y}, w={w}, h={h}")
 
-
     # Adjust coordinates based on the original crop
     x_min_new = max(x_min + x, 0)
     y_min_new = max(y_min + y, 0)
-    x_max_new = x_min_new + w
-    y_max_new = y_min_new + h
+    x_max_new = min(x_min_new + w, img_w)
+    y_max_new = min(y_min_new + h, img_h)
 
     print(f"New Bounding Box Coordinates: x_min_new={x_min_new}, y_min_new={y_min_new}, x_max_new={x_max_new}, y_max_new={y_max_new}")
 
@@ -94,6 +104,13 @@ def adjust_bbox_via_threshold(image_path, label, x_center_norm, y_center_norm, w
 
     return label, x_center_new, y_center_new, width_new, height_new
 
+# def xyxy_to_yolov5(x_min, y_min, x_max, y_max, img_w, img_h):
+#     """Convert bounding box from (x_min, y_min, x_max, y_max) format to YOLO format."""
+#     x_center = (x_min + x_max) / 2 / img_w
+#     y_center = (y_min + y_max) / 2 / img_h
+#     width = (x_max - x_min) / img_w
+#     height = (y_max - y_min) / img_h
+#     return x_center, y_center, width, height
 
 
 def parse_xml_for_phases(xml_file):
@@ -172,8 +189,10 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user, imgpath):
     class_dict = {'prophase': 0, 'earlyprometaphase': 1, 'prometaphase': 2, 'metaphase': 3, 'anaphase': 4, 'telophase': 5}
     # limits number of the final class that can be shown
     telophase_limit = 4
+    offset = telophase_limit -1
 
     for (path, series_id), indices in labels_data.items():
+        total_series_length = len(indices)
         phases = get_filtered_phases(phase_data, path, series_id, imgpath)
         
         # skip if nothing returned
@@ -181,12 +200,21 @@ def create_yolo_labels(phase_data, labels_data, output_dir, user, imgpath):
             continue
         
         telophase_max_index = get_telophase_max_index(phases, telophase_limit, len(indices))
+        print(len(indices))
+        telophase_max_index = get_telophase_max_index(phases, offset, total_series_length)
+        
+        print(f"telophase_max_index: {telophase_max_index}")
         sorted_phases = sort_phases(phases)
         
         for label in indices[telophase_max_index:]:
             process_label(label, indices, sorted_phases, class_dict, path, user)
+        for label in indices[offset:]:
+            print("label: ")
+            print(label)
+            process_label(label, indices[offset:], sorted_phases, class_dict, path, user, total_series_length)
 
 def get_filtered_phases(phase_data, path, series_id, imgpath):
+    # remove the phase if skipped
     phases = phase_data.get((path, series_id), {})
     path = imgpath + "/images/" + path.split("/images/")[1]
     return {k: v for k, v in phases.items() if v != -1}
@@ -197,13 +225,17 @@ def get_telophase_max_index(phases, telophase_limit, total_indices):
     if 'telophase' in phases:
         telophase_max_index = min(phases['telophase'] + telophase_limit, total_indices)
     return total_indices - telophase_max_index - 1
+        telophase_max_index = min(int(phases['telophase']) + telophase_limit, total_indices)
+    return telophase_max_index
 
 def sort_phases(phases):
     # reverse the phases dict
     return dict(sorted(phases.items(), key=lambda item: item[1], reverse=True))
 
-def process_label(label, indices, sorted_phases, class_dict, path, user):
-    new_index = len(indices) - int(label['class_id'])
+def process_label(label, indices, sorted_phases, class_dict, path, user, total_series_length):
+    # as the set is backwards - class id to get new class id
+    new_index = total_series_length - int(label['class_id']) -1
+
     selected_phase = get_phase(new_index, sorted_phases)
     
     if selected_phase:
@@ -221,13 +253,121 @@ def write_yolo_label(filename, user, new_class_id, adjusted_label):
 
 
 def convert_selections_multiphase(user_xml, cell_reigons_xml, new_label_folder, user, imgpath):
-# Usage
+
     phase_data = parse_xml_for_phases(user_xml)
     # print(phase_data)
     labels_data = parse_xml_for_labels(cell_reigons_xml)
     # print(labels_data)
     create_yolo_labels(phase_data, labels_data, new_label_folder, user, imgpath)
-# phase_data = parse_xml_for_phases('E:/Scott/Data/20240417/user_selections/Sara.xml')
-# labels_data = parse_xml_for_labels('E:/Scott/Data/20240417/images/cell_reigons.xml')
-# create_yolo_labels(phase_data, labels_data, 'E:/Scott/Data/20240417/new_labels')
-# convert_selections_multiphase('E:/Scott/Data/20240417/user_selections/Scott.xml', 'E:/Scott/Data/20240417/images/cell_reigons.xml', 'E:/Scott/Data/20240417/new_labels')
+
+def calculate_median_handling_negatives(group):
+    """ Calculate median, if median is -1, recalculate ignoring -1 values. """
+    median_value = group.median()
+    if median_value == -1:
+        valid_values = group[group != -1]
+        if not valid_values.empty:
+            return valid_values.median()
+    return median_value
+
+
+def parse_xml_for_phases_df(xml_file):
+    """ Parse XML and get phase indices for each image and series. """
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+    
+    # Extract the username from the file path
+    user = os.path.basename(xml_file).split('.')[0]
+    
+    data = []
+    for entry in root.findall('DataEntry'):
+        path = entry.find('PathName').text
+        series_id = entry.find('SeriesID').text
+        for phase in entry:
+            if phase.tag in ['prophase', 'earlyprometaphase', 'prometaphase', 'metaphase', 'anaphase', 'telophase']:
+                data.append({
+                    'User': user,
+                    'PathName': path,
+                    'SeriesID': series_id,
+                    'Phase': phase.tag,
+                    'Index': int(phase.text)
+                })
+
+    # Convert the list of dictionaries to a DataFrame
+    df = pd.DataFrame(data)
+    return df
+
+def calculate_median_handling_negatives(group):
+    """ Calculate median, if median is -1, recalculate ignoring -1 values. """
+    median_value = group.median()
+    if median_value == -1:
+        valid_values = group[group != -1]
+        if not valid_values.empty:
+            return valid_values.median()
+    return median_value
+
+def aggregate_phase_data(xml_files):
+    """ Aggregate phase data from multiple XML files, calculating the median index for each group. """
+    all_data = pd.DataFrame()
+
+    # Parse each XML file and concatenate the results
+    for xml_file in xml_files:
+        df = parse_xml_for_phases_df(xml_file)
+        all_data = pd.concat([all_data, df], ignore_index=True)
+
+    # Group by PathName, SeriesID, and Phase, and calculate the median index
+    aggregated_data = all_data.groupby(['PathName', 'SeriesID', 'Phase'])['Index'].apply(calculate_median_handling_negatives).reset_index()
+    
+    return aggregated_data
+
+def adjust_phase_indices(aggregated_data):
+    """ Adjust phase indices to ensure each phase is later than the previous one. """
+    phase_order = ['prophase', 'earlyprometaphase', 'prometaphase', 'metaphase', 'anaphase', 'telophase']
+    adjusted_data = []
+
+    grouped = aggregated_data.groupby(['PathName', 'SeriesID'])
+
+    for (path, series_id), group in grouped:
+        group = group.set_index('Phase').reindex(phase_order).reset_index()
+        previous_index = -1
+
+        for _, row in group.iterrows():
+            if row['Index'] != -1:
+                new_index = max(previous_index + 1, int(np.floor(row['Index'])))
+                previous_index = new_index
+                row['Index'] = new_index
+            adjusted_data.append(row)
+
+    return pd.DataFrame(adjusted_data)
+
+def create_new_xml_file(aggregated_data, output_file):
+    """ Create a new XML file with the aggregated and adjusted median data. """
+    phase_order = ['prophase', 'earlyprometaphase', 'prometaphase', 'metaphase', 'anaphase', 'telophase']
+
+    new_root = ET.Element('Data')
+
+    grouped = aggregated_data.groupby(['PathName', 'SeriesID'])
+
+    for (path, series_id), group in grouped:
+        new_entry = ET.Element('DataEntry')
+        ET.SubElement(new_entry, 'PathName').text = path
+        ET.SubElement(new_entry, 'SeriesID').text = series_id
+
+        for phase in phase_order:
+            phase_elem = ET.SubElement(new_entry, phase)
+            matching_row = group[group['Phase'] == phase]
+            if not matching_row.empty:
+                phase_elem.text = str(int(matching_row['Index'].values[0]))
+            else:
+                phase_elem.text = '-1'  # Default to -1 if no matching phase found
+        
+        new_root.append(new_entry)
+    
+    new_tree = ET.ElementTree(new_root)
+    new_tree.write(output_file)
+
+def aggregate_xml(xml_files, output_file):
+    aggregated_data = aggregate_phase_data(xml_files)
+    adjusted_data = adjust_phase_indices(aggregated_data)
+    create_new_xml_file(adjusted_data, output_file)
+
+
