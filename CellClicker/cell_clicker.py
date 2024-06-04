@@ -41,23 +41,23 @@ class ImageProcessor:
         # Load the initial image and display it
         self.display_roi()
 
-    # def normalize_image(self, image):
-    #     """ Normalizes an image to a range of [0, 255] and converts it to uint8 data type. """
-    #     image = (image - image.min()) / (image.max() - image.min()) * 255
-    #     return image.astype(np.uint8)
+    def normalize_image(self, image):
+        """ Normalizes an image to a range of [0, 255] and converts it to uint8 data type. """
+        image = (image - image.min()) / (image.max() - image.min()) * 255
+        return image.astype(np.uint8)
     
 
-    def normalize_image(self, image):
-        """Applies CLAHE to an image to enhance contrast locally."""
-        # Convert image to grayscale if it is in color
-        if len(image.shape) == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # def normalize_image(self, image):
+    #     """Applies CLAHE to an image to enhance contrast locally."""
+    #     # Convert image to grayscale if it is in color
+    #     if len(image.shape) == 3:
+    #         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Create a CLAHE object
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        cl1 = clahe.apply(image)
+    #     # Create a CLAHE object
+    #     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    #     cl1 = clahe.apply(image)
     
-        return cl1
+    #     return cl1
 
     def display_roi(self):
         """Displays an ROI centered at a specified location from an image."""

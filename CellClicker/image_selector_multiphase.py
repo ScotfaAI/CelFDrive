@@ -34,21 +34,21 @@ def load_selector(image_dict, set_index, phases, name_xml):
     root.mainloop()
     return selected_indices
 
-# def normalize_image(image):
-#     image = (image - image.min()) / (image.max() - image.min()) * 255
-#     return image.astype(np.uint8)
-
 def normalize_image(image):
-        """Applies CLAHE to an image to enhance contrast locally."""
-        # Convert image to grayscale if it is in color
-        if len(image.shape) == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    image = (image - image.min()) / (image.max() - image.min()) * 255
+    return image.astype(np.uint8)
+
+# def normalize_image(image):
+#         """Applies CLAHE to an image to enhance contrast locally."""
+#         # Convert image to grayscale if it is in color
+#         if len(image.shape) == 3:
+#             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Create a CLAHE object
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        cl1 = clahe.apply(image)
+#         # Create a CLAHE object
+#         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+#         cl1 = clahe.apply(image)
     
-        return cl1
+#         return cl1
 
 # need to add pick up where we left off
 def display_set(image_sets, set_index, selected_indices, root, phase, phases, name_xml):
