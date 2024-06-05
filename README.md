@@ -1,6 +1,6 @@
 # CelFDrive
 
-An Artificial Intelligence assisted tool for automated microscopy
+An Artificial Intelligence assisted tool for automated microscopy.
 
 ## Installation
 
@@ -70,8 +70,21 @@ From inside your conda environment:
 python run_selector.py
 ```
 
+### Conversion
+
+Edit the following variables in run_conversion.py
+
+```
+user = 'Scott'
+imgpath = 'Path/to/Dataset'
+```
+
+From inside your conda environment:
+
+```
+python run_conversion.py
+```
+
 ## Integration with software
 
-This software will work with anydata
-
-https://www.ni.com/en/support/documentation/supplemental/18/installing-python-for-calling-python-code.html
+This software is easy to deploy with intelligent-imaging-innovations Conditional Capture, but will work with imaging software that allows python code to be run such as LabVIEW and Micro-Manager.
