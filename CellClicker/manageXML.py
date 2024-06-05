@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import cv2
 import os
 import numpy as np
-from .clicker_utils import get_previous_image_name, convert_path_format, get_relative_image_name
+from .clicker_utils import get_previous_image_name, convert_path_format
 import pandas as pd
 
 import os
@@ -23,14 +23,21 @@ def check_xml(xml_path):
 
 # suspect label_name not needed anymore, currently used to find out if something exists
 def find_labels_and_extract_rois(xml_path, label_name, image_path):
+    """Gets all the labels asociated with a series that ends with a given file.
+
+    Args:
+        xml_path (string): Path to cellreigons.xml
+        label_name (string): label path
+        image_path (string): image path
+    Returns:
+
+    """
     labels = {}
     first_label_name = label_name
     first_image_path = image_path
     # Parse the XML file
     tree = ET.parse(xml_path)
     root = tree.getroot()
-    # print(convert_path_format(label_name))
-    # print("searching...")
 
     # Find the parent element with the specified label name
     parent_elem = None
@@ -38,7 +45,6 @@ def find_labels_and_extract_rois(xml_path, label_name, image_path):
         print(convert_path_format(elem.find("name").text))
         if convert_path_format(elem.find("name").text) == convert_path_format(label_name):
             parent_elem = elem
-            # print("foundname")
             break
 
     if parent_elem is not None:
@@ -192,24 +198,27 @@ def get_series_count_for_label(xml_path, label_name):
 
 
 def get_all_images(xml_path):
+    """_summary_
+
+    Args:
+        xml_path (string): Path to Cellreigons.xml
+
+    Returns:
+        dict(string, int ): Dict of label path series id pairs :a list of images 
+    """
     if not os.path.exists(xml_path):
         return 0  # Return 0 if the XML file doesn't exist
     
-    # here we need to make this run across devices, so if the location has changed we connect via the folder name
     print(xml_path)
 
-#     print("running")
     label_names = get_all_label_names(xml_path)
-#     print(label_names)
-#     print("anmes are there")
     image_names = [x.replace(".txt", ".png").replace("labels", "images") for x in label_names]
     allimages = {}
     for (label_path, image_path) in zip(label_names, image_names):
-#         print(label_path, image_path)
         image_path = xml_path.split("cell_reigons.xml")[0]+image_path.split("/images/")[1]
         print("finding: " +image_path)
+        # Get a dictionary for that label path
         image_dict = find_labels_and_extract_rois(xml_path, label_path, image_path)
-#         print(image)
         for series_id in image_dict.keys():
             allimages[(label_path, series_id)] = image_dict[series_id]
 
@@ -288,8 +297,6 @@ def cell_xml_to_dataframe_absfilenames(xml_file):
                 width = label.find('width').text
                 height = label.find('height').text
 
-                
-
                 # Append this entry as a dict to the list
                 data_entries.append({
                     'PathName': path_name_series,
@@ -340,31 +347,3 @@ def modify_class_ids(df, selected_indices, target_class_id = 2):
 
     return modified_df
 
-# Example usage
-# df is your original DataFrame
-# selected_indices is your dictionary of selected indices for each (PathName, SeriesID)
-# selected_indices = {('finder-camera4_3/labels/20220329_4_3_P1 - 1t027.txt', '1'): 5, ...}
-# target_class_id is the class ID to be set for the selected index
-
-
-# # Example usage
-# xml_path = "cell_regions.xml"
-# label_name = "example1.txt"
-
-# series_count = get_series_count_for_label(xml_path, label_name)
-# print(f"Number of series for '{label_name}': {series_count}")
-
-# # Example usage
-# xml_path = "cell_regions.xml"
-# label_name = "example1.txt"
-
-# series_count = get_series_count_for_label(xml_path, label_name)
-# print(f"Number of series for '{label_name}': {series_count}")
-
-# # Example usage
-# xml_path = "cell_regions.xml"
-# label_name = "example1.txt"
-# image_path = "example1.jpg"
-
-# result = find_labels_and_extract_rois(xml_path, label_name, image_path)
-# print(result)

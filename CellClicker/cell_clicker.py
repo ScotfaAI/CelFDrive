@@ -42,7 +42,15 @@ class ImageProcessor:
         self.display_roi()
 
     def normalize_image(self, image):
-        """ Normalizes an image to a range of [0, 255] and converts it to uint8 data type. """
+        """Normalise image by subtracting the minimum and dividing by the range, 
+        then convert to np.uint8.
+
+        Args:
+            image (np.uint8): Input image.
+
+        Returns:
+            np.uint8 : Normalised image.
+        """
         image = (image - image.min()) / (image.max() - image.min()) * 255
         return image.astype(np.uint8)
     
@@ -204,16 +212,18 @@ class ImageViewer:
     def set_focus_to_entry_box(self):
         self.frame_entry.focus_set()
 
-
     def focus_in_event(self, event):
         self.frame_entry.focus_set()
 
     def left_arrow(self, event):
         self.prev_image()
+
     def right_arrow(self, event):
         self.next_image()
 
     def load_images(self):
+        """_summary_
+        """
         # Ask the user for the directory
         directory = filedialog.askdirectory(title="Select Directory with Images")
         if not directory:
@@ -237,10 +247,6 @@ class ImageViewer:
         self.original_image_folder = os.path.normpath(self.original_image_folder)
 
         print(f'original image folder: {self.original_image_folder}')
-
-            
-        
-        
         self.images = [self.normalize_path(os.path.join(directory, f)) for f in os.listdir(directory) if f.endswith(supported_formats)]
 
         if not self.images:
@@ -250,12 +256,30 @@ class ImageViewer:
         self.images.sort()
 
     def norm_esc_str(self, path):
+        """Normalize+escape and convert all path separators to forward slashes for 
+        uniformity.
+
+        Args:
+            path (string): Path to normalise.
+
+        Returns:
+            string: Normalised path.
+        """
         path_normalized = os.path.normpath(path)
         path_escaped = re.escape(path_normalized)
         return path_escaped
     
     def normalize_path(self, path):
-        """Normalize and convert all path separators to forward slashes for uniformity."""
+        """Normalize and convert all path separators to forward slashes for 
+        uniformity.
+
+        Args:
+            path (string): Path to normalise.
+
+        Returns:
+            string: Normalised path.
+        """
+        
         return os.path.normpath(path).replace(os.sep, '/')
 
 
@@ -354,7 +378,8 @@ class ImageViewer:
             })
 
     def draw_existing_bboxes(self):
-        """ Draw existing bounding boxes on the canvas. """
+        """ Draw existing bounding boxes on the canvas. 
+        """
         # Scale factors for bounding boxes
         scale_x = self.canvas.winfo_width() / self.original_image.width
         scale_y = self.canvas.winfo_height() / self.original_image.height
@@ -370,11 +395,19 @@ class ImageViewer:
             self.canvas.create_rectangle(scaled_x, scaled_y, scaled_x + scaled_w, scaled_y + scaled_h, outline='green')
 
     def update_progress(self):
+        """Check xml is fine and update the boxes, update the UI.
+        """
         self.xml_df = check_xml(self.xml_path)
         # print(self.xml_df)
         self.update_image()
 
     def start_clicker(self, bbox):
+        """Load up clicker with initial bounding box.
+
+        Args:
+            bbox (dict): x,y, width height
+        """
+        
         # print("Bounding Box Details:")
         # print(f"Start Coordinates: ({bbox['x']}, {bbox['y']})")
         # print(f"Width: {bbox['width']} pixels")
@@ -384,16 +417,22 @@ class ImageViewer:
         ImageProcessor(self.root, img_path, bbox, self.xml_path)
 
     def next_image(self):
+        """Go to next frame and update image.
+        """
         if self.current_image < len(self.images) - 1:
             self.current_image += 1
             self.update_image()
 
     def prev_image(self):
+        """Go to previous frame and update image.
+        """
         if self.current_image > 0:
             self.current_image -= 1
             self.update_image()
 
     def go_to_frame(self):
+        """Go to given frame and update image.
+        """
         frame_number = int(self.frame_number.get())
         if 0 <= frame_number < len(self.images):
             self.current_image = frame_number

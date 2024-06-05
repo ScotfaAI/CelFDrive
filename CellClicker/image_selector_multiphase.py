@@ -1,22 +1,28 @@
 import tkinter as tk
 import os
+import cv2
+import numpy as np
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
-import numpy as np
 from .name_selector import run_name_selector
-from .manageXML import append_cell_regions_xml, find_labels_and_extract_rois, get_all_label_names, get_series_count_for_label, get_all_images, cell_xml_to_dataframe
+from .manageXML import get_all_images, cell_xml_to_dataframe
 from .user_xml import store_results, store_results_multiclass, read_xml_to_dataframe
 from .convert_selections import modify_class_ids, append_modified_labels
-from .convert_selections_multiphase import parse_xml_for_phases, parse_xml_for_phases_resume
-import numpy as np
-
-import tkinter as tk
-from tkinter import messagebox
-from PIL import Image, ImageTk
-import cv2
+from .convert_selections_multiphase import parse_xml_for_phases_resume
 
 def load_selector(image_dict, set_index, phases, name_xml):
-    
+    """Generate the initial UI
+
+    Args:
+        image_dict (dict): _description_
+        set_index (int): Often set to 0 as we start here.
+        phases (list): List of strings for phases
+        name_xml (string): Path to Name XML
+
+    Returns:
+        list: list of dicts which contain phase selection information
+    """
+
     selected_indices = []
     image_sets = []
 
@@ -35,6 +41,15 @@ def load_selector(image_dict, set_index, phases, name_xml):
     return selected_indices
 
 def normalize_image(image):
+    """Normalise image by subtracting the minimum and dividing by the range, 
+    then convert to np.uint8.
+
+    Args:
+        image (np.uint8): Input image.
+
+    Returns:
+        np.uint8 : Normalised image.
+    """
     image = (image - image.min()) / (image.max() - image.min()) * 255
     return image.astype(np.uint8)
 
@@ -50,8 +65,19 @@ def normalize_image(image):
     
 #         return cl1
 
-# need to add pick up where we left off
 def display_set(image_sets, set_index, selected_indices, root, phase, phases, name_xml):
+    """Resumes UI based on what is in name_xml
+
+    Args:
+        window (tk.window): Current UI window
+        image_sets (list): list of 
+        selected_indices (list): list of dicts which contain phase selection information
+        root (tk.root): root of TK
+        set_index (_type_): _description_
+        phases (list): List of strings for phases
+        name_xml (string): Path to Name XML
+    """
+
     window = tk.Toplevel()
     window.title(f"Select First frame visible for {phase.capitalize()} - Set {set_index + 1} of {len(image_sets)}")
     
@@ -79,7 +105,7 @@ def display_set(image_sets, set_index, selected_indices, root, phase, phases, na
         btn.image = img_tk  # Keep a reference
         btn.grid(row=row, column=column)
 
-    window.geometry("+100+100")  # Optional: Position the window at a specific location
+    window.geometry("+100+100")  
 
     # Buttons for skipping phase and marking blurry
     skip_btn = tk.Button(window, text="Skip Phase", command=lambda: on_skip_clicked(window, image_sets, selected_indices, root, phase, set_index, phases, name_xml))
@@ -88,9 +114,9 @@ def display_set(image_sets, set_index, selected_indices, root, phase, phases, na
     blurry_btn = tk.Button(window, text="Mark as Blurry", command=lambda: on_blurry_clicked(window, image_sets, selected_indices, root, set_index, phases, name_xml))
     blurry_btn.grid(row=(set_len // max_images_per_row + 1), column=1, sticky='ew')
 
-    resume_btn = tk.Button(window, text="Resume", command=lambda: on_resume_clicked(window, image_sets, selected_indices, root, phase, set_index, phases, name_xml))
+    resume_btn = tk.Button(window, text="Resume", command=lambda: on_resume_clicked(window, image_sets, selected_indices, root, set_index, phases, name_xml))
     resume_btn.grid(row=(set_len // max_images_per_row + 1), column=4, sticky='ew')
-    # print(set_index)
+
     # Back Button
     if selected_indices:
     # if set_index > 0 or (set_index == 0 and len(selected_indices[set_index]) > 1):
@@ -100,11 +126,20 @@ def display_set(image_sets, set_index, selected_indices, root, phase, phases, na
         save_btn = tk.Button(window, text="Save", command=lambda: on_save_clicked(selected_indices, phases, name_xml))
         save_btn.grid(row=(set_len // max_images_per_row + 1), column=3, sticky='ew')
 
-def on_resume_clicked(window,image_sets, selected_indices, root, phase, set_index, phases, name_xml):
+def on_resume_clicked(window,image_sets, selected_indices, root, set_index, phases, name_xml):
+    """Resumes UI based on what is in name_xml
+
+    Args:
+        window (tk.window): Current UI window
+        image_sets (_type_): _description_
+        selected_indices (list): list of dicts which contain 
+        root (tk.root): root of TK
+        set_index (_type_): _description_
+        phases (list): List of strings for phases
+        name_xml (string): Path to Name XML
+    """
     stored_selections = parse_xml_for_phases_resume(name_xml)
     print(stored_selections)
-    
-    
     
     for stored in stored_selections.values():
         print(stored)
@@ -183,6 +218,12 @@ def go_back(window, image_sets, selected_indices, root, phase, set_index, phases
 
 
 def load_ui(cell_xml):
+    """Entry point, loads the name selector. Then gets all the images fo cells and
+    returns them as a dict. Then stores the results.
+
+    Args:
+        cell_xml (string): Path to cell_reigons.xml
+    """
     # Call the UI function to run the name selector
     
     name_xml = run_name_selector("select_xmls")
@@ -191,9 +232,17 @@ def load_ui(cell_xml):
     selected_indicies = load_selector(images_dict, 0)
     store_results(images_dict, selected_indicies, name_xml)
 
-def load_ui_from_folder():
+def load_ui_from_folder(phases, verbose = False):
+    """Entry point, loads a folder selector then the name selector. 
+    Normalises paths.
+    Gets all the images fo cells and returns them as a dict. 
+    Then stores the results.
+
+    Args:
+        phases (list): List of strings for phases
+        verbose (bool): Decides whether to print variables
+    """
     # Call the UI function to run the name selector
-    phases = ['prophase','earlyprometaphase', 'prometaphase', 'metaphase', 'anaphase', 'telophase']
 
     directory = filedialog.askdirectory(title="Select Directory with Images")
     if not directory:
@@ -208,12 +257,20 @@ def load_ui_from_folder():
     print(f"Selected XML: {name_xml}")
     global images_dict
     images_dict = get_all_images(cell_xml)
-    print(images_dict)
+    if verbose:
+        print(images_dict)
     selected_indicies = load_selector(images_dict, 0, phases, name_xml)
-    print(selected_indicies)
+    if verbose:
+        print(selected_indicies)
     store_results_multiclass(images_dict, selected_indicies, name_xml, phases)
     
 def xml_to_labels(name_xml, cell_xml):
+    """Coverts for single phase.
+
+    Args:
+        name_xml (string): Path to user selections CML
+        cell_xml (string): Path to cell_reigons.xml
+    """
     
     user_df = read_xml_to_dataframe(name_xml)
     
@@ -225,22 +282,18 @@ def xml_to_labels(name_xml, cell_xml):
     
     
 def debug_xml_to_labels(name_xml, cell_xml):
+    """ Debugger to view single phase.
+
+    Args:
+        name_xml (string): Path to user selections CML
+        cell_xml (string): Path to cell_reigons.xml
+
+    Returns:
+        pd.df, pd.df: Pair of dataframes for selector and clicker XML
+    """
     
     user_df = read_xml_to_dataframe(name_xml)
     
     cell_df = cell_xml_to_dataframe(cell_xml)
     return user_df, cell_df
 
-def debug_xml_to_labels2(name_xml, cell_xml):
-    
-    user_df = read_xml_to_dataframe(name_xml)
-    
-    cell_df = cell_xml_to_dataframe(cell_xml)
-    
-    target_class_id = 2
-    modified_df = modify_class_ids(cell_df, user_df, target_class_id)
-    return modified_df
-#     target_class_id = 2
-#     modified_df = modify_class_ids(cell_df, user_df, target_class_id)
-#     append_modified_labels(modified_df)
-        
