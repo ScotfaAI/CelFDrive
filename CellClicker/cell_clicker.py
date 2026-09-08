@@ -19,6 +19,15 @@ from CellClicker.image_series import UnsupportedFrameNamingError, discover_image
 
 
 MINI_CLICKER_DISPLAY_SCALE = 3
+
+# Guidance for the two image canvases. The pointer rests on a canvas constantly,
+# so these are shown as a hover hint only once per run and otherwise live in a
+# status line that is always visible and never covers the image.
+CLICKER_CANVAS_HINT = "Click the centre of the same cell. Each click records a box and moves to the preceding frame."
+VIEWER_CANVAS_HINT = (
+    "Drag around a cell to create a red box. Green boxes are existing tracks; "
+    "right-click one to extend it earlier, or use its red X to delete the track."
+)
 IMAGE_VIEWER_HELP_TEXT = (
     "Keyboard shortcuts: Left Arrow = previous image; Right Arrow = next image; I = Inspect; "
     "U = Update Progress; F = Finished (while the mini-clicker is open).\n\n"
@@ -73,13 +82,10 @@ class ImageProcessor:
         # Display area for images
         self.canvas = tk.Canvas(self.image_window, width=600, height=600)
         self.canvas.pack()
-        add_tooltip(
-            self.canvas,
-            "Click the centre of the same cell. Each click records a box and moves to the preceding frame.",
-        )
+        add_tooltip(self.canvas, CLICKER_CANVAS_HINT, once=True)
 
         # Status label
-        self.status_label = Label(self.image_window, text="Ready", bd=1, relief=tk.SUNKEN, anchor=tk.W)
+        self.status_label = Label(self.image_window, text=CLICKER_CANVAS_HINT, bd=1, relief=tk.SUNKEN, anchor=tk.W)
         self.status_label.pack(side=tk.BOTTOM, fill=tk.X)
 
         # Button to manually end the session
@@ -259,12 +265,12 @@ class ImageViewer:
         self.btn_go_to_frame.pack(side=tk.LEFT)
 
         # Buttons
-        self.btn_inspect = tk.Button(frame, text="Update Progress", command=self.update_progress)
+        self.btn_update_progress = tk.Button(frame, text="Update Progress", command=self.update_progress)
         add_tooltip(
-            self.btn_inspect,
+            self.btn_update_progress,
             "Reload existing track overlays after annotations change. Shortcut: U.",
         )
-        self.btn_inspect.pack(side=tk.LEFT)
+        self.btn_update_progress.pack(side=tk.LEFT)
         self.btn_back = tk.Button(frame, text="<<", command=self.prev_image, state=tk.DISABLED)
         self.btn_back.pack(side=tk.LEFT)
         self.btn_forward = tk.Button(frame, text=">>", command=self.next_image)
@@ -280,12 +286,16 @@ class ImageViewer:
         self.label = tk.Label(self.root, text='', pady=10)
         self.label.pack(side=tk.BOTTOM)
 
+        # Canvas guidance, kept visible rather than hovering over the image
+        self.hint_label = tk.Label(
+            self.root, text=VIEWER_CANVAS_HINT, fg="#555555",
+            wraplength=900, justify=tk.LEFT, pady=2,
+        )
+        self.hint_label.pack(side=tk.BOTTOM)
+
         # Canvas for image display
         self.canvas = tk.Canvas(self.root, cursor="cross")
-        add_tooltip(
-            self.canvas,
-            "Drag around a cell to create a red box. Green boxes are existing tracks; right-click one to extend it earlier, or use its red X to delete the track.",
-        )
+        add_tooltip(self.canvas, VIEWER_CANVAS_HINT, once=True)
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         

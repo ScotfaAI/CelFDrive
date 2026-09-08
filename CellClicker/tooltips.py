@@ -3,10 +3,28 @@
 import tkinter as tk
 
 
+#: Text of every one-shot tooltip already shown in this run of the application.
+#: Keyed by text rather than by widget so that a hint does not reappear each
+#: time a short-lived window (such as the mini-clicker) is rebuilt.
+_ONCE_SHOWN = set()
+
+
+def reset_once_shown():
+    """Allow one-shot tooltips to be shown again."""
+    _ONCE_SHOWN.clear()
+
+
 class Tooltip:
     """Display explanatory text after the pointer rests over a widget."""
 
-    def __init__(self, widget, text, delay_ms=500, wraplength=360):
+    def __init__(self, widget, text, delay_ms=500, wraplength=360, once=False):
+        """Attach a tooltip to ``widget``.
+
+        Set ``once`` for a hint on a working surface such as an image canvas,
+        where the pointer rests constantly: it is shown the first time in a run
+        and then stays out of the way. Such text belongs somewhere permanently
+        visible as well, since a hint shown once is easily missed.
+        """
         if not text or not text.strip():
             raise ValueError("Tooltip text must not be empty.")
         if delay_ms < 0:
@@ -16,6 +34,7 @@ class Tooltip:
         self.text = text
         self.delay_ms = delay_ms
         self.wraplength = wraplength
+        self.once = once
         self._after_id = None
         self._window = None
 
@@ -25,6 +44,8 @@ class Tooltip:
         widget.bind("<Destroy>", self._destroy, add="+")
 
     def _schedule(self, _event=None):
+        if self.once and self.text in _ONCE_SHOWN:
+            return
         self._cancel_scheduled()
         self._after_id = self.widget.after(self.delay_ms, self._show)
 
@@ -40,14 +61,19 @@ class Tooltip:
         self._after_id = None
         if self._window is not None or not self.widget.winfo_exists():
             return
+        if self.once:
+            _ONCE_SHOWN.add(self.text)
+        self._window = self._create_window()
 
-        self._window = tk.Toplevel(self.widget)
-        self._window.wm_overrideredirect(True)
-        self._window.wm_geometry(
+    def _create_window(self):
+        """Build the pop-up holding this tooltip's text."""
+        window = tk.Toplevel(self.widget)
+        window.wm_overrideredirect(True)
+        window.wm_geometry(
             f"+{self.widget.winfo_pointerx() + 14}+{self.widget.winfo_pointery() + 12}"
         )
         tk.Label(
-            self._window,
+            window,
             text=self.text,
             justify=tk.LEFT,
             relief=tk.SOLID,
@@ -58,6 +84,7 @@ class Tooltip:
             pady=4,
             wraplength=self.wraplength,
         ).pack()
+        return window
 
     def _hide(self, _event=None):
         self._cancel_scheduled()

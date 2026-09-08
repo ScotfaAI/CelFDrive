@@ -93,6 +93,12 @@ YOLO training and cell-tightener interfaces. Use the fuller workflow sections
 below when choosing experiment-specific parameters or preparing irreversible
 exports and training runs.
 
+The two image canvases, in CellClicker and in the mini-clicker it opens, are
+worked over continuously rather than visited briefly, so their guidance is
+handled differently: the hover hint appears once per run of the application and
+then stays out of the way, and the same wording remains permanently visible
+beneath the image and in the mini-clicker's status bar.
+
 The active environment needs the packages in the supplied environment file.
 YOLO11 training, SAM2, and the trained tightener additionally require
 `ultralytics`; SAM2 also needs a compatible PyTorch CPU or CUDA installation.
