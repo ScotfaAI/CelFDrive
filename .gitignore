@@ -52,3 +52,11 @@ Paper Resource/
 
 # Local analysis workspace
 /$work/
+
+# Manuscript submission packaging and its preflight workspace
+/final_submission/
+/final_submission_preflight_workspace/
+/submission_package_notes/
+
+# Test runner cache
+.pytest_cache/
