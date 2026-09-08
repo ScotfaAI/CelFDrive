@@ -92,9 +92,20 @@ def _timepoints_from_tiff(path, channel_index):
     yield from image
 
 
-def _series_directory_name(path, used_names):
-    """Create a deterministic safe, unique directory name from a TIFF filename."""
-    base = re.sub(r"[^A-Za-z0-9._-]+", "_", path.stem).strip("._") or "series"
+def _timepoint_count(path):
+    """Return the number of timepoints a TIFF contributes without reading pixels."""
+    axes, shape = _read_series_metadata(path)
+    return shape[axes.index("T")] if "T" in axes else 1
+
+
+def series_name_for_tiff(path, used_names):
+    """Create a deterministic, filesystem-safe, unique series name for a TIFF.
+
+    The name is used as the filename prefix of every frame the TIFF produces,
+    so it preserves the source stem and is disambiguated when two stems
+    sanitize identically.
+    """
+    base = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(path).stem).strip("._") or "series"
     name, suffix = base, 2
     while name.casefold() in used_names:
         name, suffix = f"{base}_{suffix}", suffix + 1
@@ -102,47 +113,65 @@ def _series_directory_name(path, used_names):
     return name
 
 
-def _write_project(tiff_paths, project_directory, channel_index, progress_callback=None):
-    """Write a complete project into an already-created temporary directory."""
+def assign_series_names(tiff_paths):
+    """Return ``{tiff path: series name}`` for one import, resolving collisions."""
+    used_names = set()
+    return {path: series_name_for_tiff(path, used_names) for path in tiff_paths}
+
+
+def frame_filename(series_name, timepoint, frame_count=0):
+    """Return the flat project filename for one timepoint of one series.
+
+    Frame numbers are zero padded to at least three digits so that they sort
+    chronologically as text and match CellClicker's ``t<frame>`` convention.
+    """
+    return f"{series_name}_t{timepoint:0{max(3, len(str(frame_count)))}d}.png"
+
+
+def _write_project(tiff_paths, project_directory, channel_index, series_names, progress_callback=None):
+    """Write a complete flat project into an already-created temporary directory."""
     images_directory = project_directory / "images"
     images_directory.mkdir()
     ElementTree.ElementTree(ElementTree.Element("annotations")).write(images_directory / CELL_REGIONS_FILENAME, encoding="utf-8", xml_declaration=True)
-    used_names, frame_count = set(), 0
-    total_frames = sum(1 for path in tiff_paths for _ in _timepoints_from_tiff(path, channel_index))
+    frame_counts = {path: _timepoint_count(path) for path in tiff_paths}
+    total_frames = sum(frame_counts.values())
     completed = 0
     for path in tiff_paths:
-        series_directory = images_directory / _series_directory_name(path, used_names)
-        series_directory.mkdir()
+        series_name, frame_count = series_names[path], frame_counts[path]
         for timepoint, frame in enumerate(_timepoints_from_tiff(path, channel_index), start=1):
-            Image.fromarray(preprocess_image(frame)).save(series_directory / f"t{timepoint:03}.png")
+            Image.fromarray(preprocess_image(frame)).save(images_directory / frame_filename(series_name, timepoint, frame_count))
             completed += 1
-            frame_count += 1
             if progress_callback:
                 progress_callback(completed, total_frames, str(path))
-    return {"series": len(tiff_paths), "frames": frame_count, "project_directory": str(project_directory)}
+    return {"series": len(tiff_paths), "frames": completed, "project_directory": str(project_directory)}
 
 
 def create_projects_from_tiff_folder(source_directory, output_directory, channel_index=0, separate_projects=False, progress_callback=None):
-    """Create atomic CellClicker project(s) from every TIFF in one directory."""
+    """Create atomic CellClicker project(s) from every TIFF in one directory.
+
+    Every generated PNG is written directly into the project's flat ``images/``
+    directory as ``<series>_t<frame>.png``; series identity lives in the
+    filename rather than in a directory hierarchy.
+    """
     tiff_paths = find_tiff_files(source_directory)
     output_directory = Path(output_directory)
     if output_directory.exists():
         raise FileExistsError(f"Refusing to overwrite existing output directory: {output_directory}")
     if channel_index not in available_channel_indices(source_directory):
         raise ValueError(f"Channel {channel_index} is not available in every TIFF in {source_directory}.")
+    series_names = assign_series_names(tiff_paths)
     output_directory.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix="celfdrive-tiff-import-", dir=output_directory.parent))
     try:
         if separate_projects:
-            summaries, used_names = [], set()
+            summaries = []
             for path in tiff_paths:
-                name = _series_directory_name(path, used_names)
-                project = staging / name
+                project = staging / series_names[path]
                 project.mkdir()
-                summaries.append(_write_project([path], project, channel_index, progress_callback))
+                summaries.append(_write_project([path], project, channel_index, series_names, progress_callback))
             result = {"projects": summaries, "series": len(tiff_paths), "frames": sum(item["frames"] for item in summaries)}
         else:
-            result = _write_project(tiff_paths, staging, channel_index, progress_callback)
+            result = _write_project(tiff_paths, staging, channel_index, series_names, progress_callback)
             result["projects"] = [result.copy()]
         os.replace(staging, output_directory)
         for project in result["projects"]:

@@ -12,10 +12,10 @@ from CellClicker.manageXML import (
     get_next_series_id, get_series_extension_start, prepare_series_extension,
     remove_entry_from_xml,
 )
-from CellClicker.clicker_utils import get_previous_image_name, get_relative_image_name, yolov5_to_xywh
+from CellClicker.clicker_utils import clear_series_width_cache, get_previous_image_name, get_relative_image_name, yolov5_to_xywh
 from CellClicker.tooltips import add_tooltip
 from CellClicker.project_paths import resolve_cell_regions_xml
-from CellClicker.image_series import discover_image_series
+from CellClicker.image_series import UnsupportedFrameNamingError, discover_image_series, series_menu_labels
 
 
 MINI_CLICKER_DISPLAY_SCALE = 3
@@ -310,6 +310,7 @@ class ImageViewer:
         # Load images
         self.images = []
         self.series_images = {}
+        self.series_labels = {}
         self.current_image = 0
         self.load_images()
 
@@ -340,11 +341,15 @@ class ImageViewer:
 
     def inspect_hotkey(self, event):
         """Open the mini-clicker for the currently drawn box when I is pressed."""
+        if self._typing_a_frame_number():
+            return None
         self.inspect_bbox()
         return "break"
 
     def update_progress_hotkey(self, event):
         """Refresh track annotations when U is pressed."""
+        if self._typing_a_frame_number():
+            return None
         self.update_progress()
         return "break"
 
@@ -356,10 +361,34 @@ class ImageViewer:
     def focus_in_event(self, event):
         self.frame_entry.focus_set()
 
+    def _typing_a_frame_number(self):
+        """True when the frame-number box has focus and keys should edit text.
+
+        Navigation and action hotkeys are bound on the whole window so they work
+        wherever focus sits, which would otherwise make them fire while the user
+        is typing in that box.
+        """
+        try:
+            return self.root.focus_get() is self.frame_entry
+        except (KeyError, tk.TclError):
+            return False
+
     def left_arrow(self, event):
+        """Step one frame back, once per keypress."""
+        if self._typing_a_frame_number():
+            return None
         self.prev_image()
+        # Arrow keys are bound on both the canvas and the window so they work
+        # whichever has focus. Stop the event there, or the focused canvas would
+        # hand it on to the window binding and move two frames per keypress.
+        return "break"
+
     def right_arrow(self, event):
+        """Step one frame forward, once per keypress."""
+        if self._typing_a_frame_number():
+            return None
         self.next_image()
+        return "break"
 
     def load_images(self):
         # Ask the user for the directory
@@ -372,10 +401,16 @@ class ImageViewer:
         
         directory = os.path.join(directory, "images")
         directory = os.path.normpath(directory)
+        # The project's images may have been renamed since it was last loaded.
+        clear_series_width_cache()
         print('current image folder')
         print(directory)
         self.xml_path = str(resolve_cell_regions_xml(os.path.dirname(directory)).path)
-        self.xml_df = check_xml(self.xml_path)
+        try:
+            self.xml_df = check_xml(self.xml_path)
+        except UnsupportedFrameNamingError as exc:
+            self._report_unsupported_frame_naming(exc)
+            return
         print(self.xml_df)
         if not self.xml_df.empty:
             self.original_image_folder = os.path.normpath(self.xml_df['PathName'][0].split("images")[0])
@@ -391,7 +426,11 @@ class ImageViewer:
 
 
 
-        discovered = discover_image_series(directory)
+        try:
+            discovered = discover_image_series(directory)
+        except UnsupportedFrameNamingError as exc:
+            self._report_unsupported_frame_naming(exc)
+            return
         self.series_images = {
             name: [self.normalize_path(path) for path in paths]
             for name, paths in discovered.items()
@@ -401,17 +440,26 @@ class ImageViewer:
             return
         self._configure_series_menu()
 
+    def _report_unsupported_frame_naming(self, error):
+        """Refuse a project whose timepoints cannot be tracked, and say why."""
+        self.series_images, self.images = {}, []
+        self.label.config(text="Project not loaded: a series writes its timepoint inconsistently.")
+        messagebox.showerror("Unsupported Image Names", str(error), parent=self.root)
+
     def _configure_series_menu(self):
         """Populate the series selector and activate the first ordered series."""
+        # Every series filename repeats the experiment name, so the selector
+        # shows only the part that distinguishes them, usually the position.
+        self.series_labels = series_menu_labels(self.series_images)
         menu = self.series_menu["menu"]
         menu.delete(0, "end")
         for name in self.series_images:
-            menu.add_command(label=name, command=lambda selected=name: self.select_series(selected))
+            menu.add_command(label=self.series_labels[name], command=lambda selected=name: self.select_series(selected))
         self.select_series(next(iter(self.series_images)))
 
     def select_series(self, series_name):
         """Switch navigation and annotation to one independent image series."""
-        self.series_var.set(series_name)
+        self.series_var.set(self.series_labels.get(series_name, series_name))
         self.images = self.series_images[series_name]
         self.current_image = 0
         self.frame_number.set("0")
@@ -442,7 +490,10 @@ class ImageViewer:
         
 #     filter to current image
         if not self.xml_df.empty:
-            filtered_df = self.xml_df[self.xml_df['PathName'].apply(lambda path: os.path.normpath(path)).str.contains(img_path)]
+            # Match the literal path fragment: image names contain regex
+            # metacharacters such as `.`, and Windows separators would
+            # otherwise be read as escape sequences.
+            filtered_df = self.xml_df[self.xml_df['PathName'].apply(lambda path: os.path.normpath(path)).str.contains(self.norm_esc_str(img_path))]
 
             if filtered_df.empty:
                 self.existing_bboxes = []  # No bounding boxes found

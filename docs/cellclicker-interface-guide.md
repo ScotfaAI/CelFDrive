@@ -17,30 +17,68 @@ in that folder just to follow the guide: those operations write project output.
 To begin from raw microscopy data, select **Create Project from TIFF Folder**
 in the main project window. Choose a folder containing one or more `.tif` or
 `.tiff` files, then choose a new output project folder. Each TIFF is treated as
-one independent time series. The normal project layout keeps them separate:
+one independent time series. Like every CellClicker project, the result keeps
+all of its images in one flat `images/` directory:
 
 ```text
-new_project/
+my_project/
 └── images/
-    ├── position_001/
-    │   ├── t001.png
-    │   └── ...
-    ├── position_002/
-    │   ├── t001.png
-    │   └── ...
+    ├── position_01_t001.png
+    ├── position_01_t002.png
+    ├── position_02_t001.png
+    ├── position_02_t002.png
     └── cell_regions.xml
 ```
+
+Each frame is named `<source TIFF name>_t<frame>.png`, matching the existing
+project convention `<experiment>_P<position>_t<frame>.png`, so a PNG always
+shows which position it came from. Frame numbers are zero padded to at least
+three digits and therefore sort chronologically. Source names are made
+filesystem-safe, and two TIFF names that would produce the same prefix are
+given distinct ones rather than overwriting each other's frames.
 
 The importer reads TIFF axes metadata. It selects the requested channel,
 maximum-projects a Z axis when one is present, and accepts resulting `T,Y,X`
 or `Y,X` intensity data. Each output frame is clipped at the 99.99th intensity
 percentile and independently min--max normalized to 8-bit PNG. It refuses to
-guess unsupported axis layouts or overwrite an existing output folder.
+guess unsupported axis layouts or overwrite an existing output folder, and
+writes nothing at the output location unless every TIFF converts successfully.
 
-CellClicker shows a **Series** dropdown when a project has more than one TIFF
-series. Frame navigation and backward tracking remain within the selected
-series. Select **Create one project per TIFF instead** in the import dialog
-when independent project folders are preferred.
+CellClicker shows a **Series** dropdown when a project holds more than one
+series. Series are grouped by everything before the trailing `_t<frame>`, not
+by any folder structure, so the PNG files stay in one flat directory while each
+source TIFF still appears as its own entry. Nothing depends on how positions
+are spelled: `P01`, `p01`, `P1`, `p1` and names with no position token at all
+group the same way, and positions are ordered numerically so `p2` comes before
+`p10`. Because every filename repeats the experiment name, the dropdown shows
+only the part that distinguishes the series, usually the position, and falls
+back to full names when that would be ambiguous. Frame navigation, direct frame
+entry and backward tracking all remain within the selected series. An ordinary
+project whose images share a single prefix, or use no timepoint naming at all,
+loads as one series exactly as before. Select **Create one project per TIFF instead** in the
+import dialog when independent project folders are preferred; each of those
+projects also has a flat `images/` directory.
+
+Reading an existing project is permissive about how the timepoint is written.
+The marker may be `t` or `T`, and the frame number may be padded to any width or
+not padded at all, so `t001 ... t200`, `t01 ... t200` and `t1 ... t200` all
+load and all step backwards correctly. A series is read as *zero padded to at
+least the narrowest width it uses*, and where that is ambiguous from one
+filename alone the other images in the series settle it. A word that merely
+ends in a letter and digits, such as `slot12`, is not read as a timepoint.
+Frames are ordered numerically, so `t2` comes before `t10` whatever the padding.
+
+What a series may not do is follow two padding rules at once, for example
+`..._t9.png` beside `..._t010.png`, or mark the timepoint `t` in some frames and
+`T` in others. There is then no way to rewrite one frame's name into the
+previous frame's, so the project is refused at load with a message naming the
+series and the images to rename. Different series in the same project may use
+different styles. The importer always writes the canonical zero-padded
+lower-case form.
+
+Projects created by the first release of this importer, which placed each
+series in its own `images/<series>/` subdirectory, still load: a subdirectory
+is read as one series. That layout is superseded and is not produced any more.
 
 Start the unified interface from the repository root:
 
