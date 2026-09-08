@@ -15,6 +15,7 @@ from CellClicker.manageXML import (
 from CellClicker.clicker_utils import get_previous_image_name, get_relative_image_name, yolov5_to_xywh
 from CellClicker.tooltips import add_tooltip
 from CellClicker.project_paths import resolve_cell_regions_xml
+from CellClicker.image_series import discover_image_series
 
 
 MINI_CLICKER_DISPLAY_SCALE = 3
@@ -243,7 +244,11 @@ class ImageViewer:
         frame = tk.Frame(self.root)
         frame.pack(side=tk.BOTTOM, pady=20)
 
-         # Numeric input for frame number
+        # Numeric input for frame number
+        self.series_var = tk.StringVar(value="")
+        self.series_menu = tk.OptionMenu(frame, self.series_var, "")
+        tk.Label(frame, text="Series:").pack(side=tk.LEFT)
+        self.series_menu.pack(side=tk.LEFT)
         self.frame_number = tk.StringVar()
         self.frame_entry = tk.Entry(frame, textvariable=self.frame_number)
         self.frame_entry.pack(side=tk.LEFT)
@@ -304,6 +309,7 @@ class ImageViewer:
 
         # Load images
         self.images = []
+        self.series_images = {}
         self.current_image = 0
         self.load_images()
 
@@ -364,8 +370,6 @@ class ImageViewer:
         if not directory:
             return
         
-        # List all image files in the directory
-        supported_formats = (".png", ".jpg", ".jpeg", ".bmp", ".gif")
         directory = os.path.join(directory, "images")
         directory = os.path.normpath(directory)
         print('current image folder')
@@ -387,13 +391,31 @@ class ImageViewer:
 
 
 
-        self.images = [self.normalize_path(os.path.join(directory, f)) for f in os.listdir(directory) if f.endswith(supported_formats)]
-
-        if not self.images:
+        discovered = discover_image_series(directory)
+        self.series_images = {
+            name: [self.normalize_path(path) for path in paths]
+            for name, paths in discovered.items()
+        }
+        if not self.series_images:
             self.label.config(text="No images found!")
             return
-        
-        self.images.sort()
+        self._configure_series_menu()
+
+    def _configure_series_menu(self):
+        """Populate the series selector and activate the first ordered series."""
+        menu = self.series_menu["menu"]
+        menu.delete(0, "end")
+        for name in self.series_images:
+            menu.add_command(label=name, command=lambda selected=name: self.select_series(selected))
+        self.select_series(next(iter(self.series_images)))
+
+    def select_series(self, series_name):
+        """Switch navigation and annotation to one independent image series."""
+        self.series_var.set(series_name)
+        self.images = self.series_images[series_name]
+        self.current_image = 0
+        self.frame_number.set("0")
+        self.update_image()
 
     def norm_esc_str(self, path):
         path_normalized = os.path.normpath(path)

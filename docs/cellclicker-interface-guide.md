@@ -12,6 +12,36 @@ in that folder just to follow the guide: those operations write project output.
 
 ## Before starting
 
+### Create a project from TIFF time series
+
+To begin from raw microscopy data, select **Create Project from TIFF Folder**
+in the main project window. Choose a folder containing one or more `.tif` or
+`.tiff` files, then choose a new output project folder. Each TIFF is treated as
+one independent time series. The normal project layout keeps them separate:
+
+```text
+new_project/
+└── images/
+    ├── position_001/
+    │   ├── t001.png
+    │   └── ...
+    ├── position_002/
+    │   ├── t001.png
+    │   └── ...
+    └── cell_regions.xml
+```
+
+The importer reads TIFF axes metadata. It selects the requested channel,
+maximum-projects a Z axis when one is present, and accepts resulting `T,Y,X`
+or `Y,X` intensity data. Each output frame is clipped at the 99.99th intensity
+percentile and independently min--max normalized to 8-bit PNG. It refuses to
+guess unsupported axis layouts or overwrite an existing output folder.
+
+CellClicker shows a **Series** dropdown when a project has more than one TIFF
+series. Frame navigation and backward tracking remain within the selected
+series. Select **Create one project per TIFF instead** in the import dialog
+when independent project folders are preferred.
+
 Start the unified interface from the repository root:
 
 ```powershell

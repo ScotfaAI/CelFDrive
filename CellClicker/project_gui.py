@@ -39,6 +39,7 @@ from .project_paths import (
     migrate_legacy_cell_regions_xml,
     resolve_cell_regions_xml,
 )
+from .tiff_project_import import available_channel_indices, create_projects_from_tiff_folder
 
 
 LOGGER = logging.getLogger(__name__)
@@ -105,6 +106,10 @@ class ProjectGUI:
             tk.Button(top, text="Load Project", command=self.load_project),
             "Choose the project folder containing images/, not the images folder itself.",
         ).pack(side=tk.LEFT)
+        add_tooltip(
+            tk.Button(top, text="Create Project from TIFF Folder", command=self.create_tiff_project),
+            "Split TIFF time series into normalized PNG frames and create a new CellClicker project.",
+        ).pack(side=tk.LEFT, padx=4)
         tk.Button(top, text="Refresh Status", command=self._refresh_project_status).pack(side=tk.LEFT, padx=4)
         tk.Label(top, textvariable=self.project_var, anchor=tk.W).pack(side=tk.LEFT, padx=12)
 
@@ -250,6 +255,85 @@ class ProjectGUI:
             )
         self._refresh_project_status()
         self.status_var.set("Project loaded.")
+
+    def create_tiff_project(self):
+        """Open the TIFF-folder import dialog and load a newly created project."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Create Project from TIFF Folder")
+        dialog.geometry("650x260")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        source_var = tk.StringVar()
+        output_var = tk.StringVar()
+        channel_var = tk.StringVar(value="0")
+        separate_var = tk.BooleanVar(value=False)
+        channel_menu = ttk.Combobox(dialog, textvariable=channel_var, state="disabled", width=10)
+
+        def choose_source():
+            source = filedialog.askdirectory(title="Select Folder Containing TIFF Time Series", parent=dialog)
+            if not source:
+                return
+            try:
+                channels = available_channel_indices(source)
+            except (OSError, ValueError, FileNotFoundError) as exc:
+                messagebox.showerror("TIFF Folder", str(exc), parent=dialog)
+                return
+            source_var.set(os.path.normpath(source))
+            channel_menu.configure(values=[str(index) for index in channels], state="readonly")
+            channel_var.set(str(channels[0]))
+            if not output_var.get():
+                output_var.set(os.path.join(os.path.dirname(source), f"{os.path.basename(source)}_cellclicker"))
+
+        def choose_output():
+            selected = filedialog.askdirectory(title="Select Parent Folder for New Project", parent=dialog)
+            if not selected:
+                return
+            initial_name = os.path.basename(source_var.get()) if source_var.get() else "cellclicker_project"
+            name = simpledialog.askstring("Project Folder Name", "New project folder name:", initialvalue=f"{initial_name}_cellclicker", parent=dialog)
+            if name:
+                output_var.set(os.path.join(selected, name))
+
+        def run_import():
+            if not source_var.get() or not output_var.get():
+                messagebox.showerror("TIFF Import", "Select both a TIFF source folder and a new output project folder.", parent=dialog)
+                return
+            try:
+                channel_index = int(channel_var.get())
+                result = self._run_with_progress_dialog(
+                    "Importing TIFF Time Series",
+                    "Creating normalized CellClicker images...",
+                    lambda progress: create_projects_from_tiff_folder(
+                        source_var.get(), output_var.get(), channel_index, separate_var.get(), progress,
+                    ),
+                )
+            except (OSError, ValueError, FileExistsError, RuntimeError) as exc:
+                messagebox.showerror("TIFF Import Failed", str(exc), parent=dialog)
+                return
+            dialog.destroy()
+            if separate_var.get():
+                self.status_var.set(f"Created {result['series']} separate projects with {result['frames']} frames in {result['output_directory']}.")
+                messagebox.showinfo("TIFF Projects Created", self.status_var.get(), parent=self.root)
+                return
+            self.project_dir = os.path.normpath(result["project_directory"])
+            self.project_var.set(f"Project: {self.project_dir}")
+            self._refresh_project_status()
+            self.status_var.set(f"Created and loaded {result['series']} series / {result['frames']} normalized frames.")
+            messagebox.showinfo("TIFF Project Created", self.status_var.get(), parent=self.root)
+
+        tk.Label(dialog, text="TIFF source folder:").grid(row=0, column=0, sticky="w", padx=12, pady=(16, 6))
+        tk.Entry(dialog, textvariable=source_var, width=60).grid(row=0, column=1, padx=6, pady=(16, 6))
+        tk.Button(dialog, text="Browse…", command=choose_source).grid(row=0, column=2, padx=(0, 12), pady=(16, 6))
+        tk.Label(dialog, text="New project folder:").grid(row=1, column=0, sticky="w", padx=12, pady=6)
+        tk.Entry(dialog, textvariable=output_var, width=60).grid(row=1, column=1, padx=6, pady=6)
+        tk.Button(dialog, text="Browse…", command=choose_output).grid(row=1, column=2, padx=(0, 12), pady=6)
+        tk.Label(dialog, text="Channel:").grid(row=2, column=0, sticky="w", padx=12, pady=6)
+        channel_menu.grid(row=2, column=1, sticky="w", padx=6, pady=6)
+        tk.Checkbutton(dialog, text="Create one project per TIFF instead", variable=separate_var).grid(row=3, column=1, sticky="w", padx=6, pady=6)
+        tk.Label(dialog, text="TIFFs are read using their axes metadata; Z is maximum-projected and each frame is normalized independently.", wraplength=600, justify=tk.LEFT).grid(row=4, column=0, columnspan=3, sticky="w", padx=12, pady=(4, 12))
+        tk.Button(dialog, text="Create Project", command=run_import, width=16).grid(row=5, column=1, sticky="e", padx=6)
+        tk.Button(dialog, text="Cancel", command=dialog.destroy, width=12).grid(row=5, column=2, sticky="w", padx=(0, 12))
 
     def _require_project(self):
         if not self.project_dir:

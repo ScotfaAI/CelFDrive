@@ -6,10 +6,9 @@ from CellClicker.project_gui import ProjectGUI
 
 
 def main():
-    """Create the project GUI and prompt immediately for a project directory."""
+    """Create the project GUI."""
     root = tk.Tk()
     app = ProjectGUI(root)
-    app.load_project()
     try:
         root.mainloop()
     finally:
